@@ -1,12 +1,20 @@
 ---
+description: >-
+  Connect your app to CollieAi with the OpenAI SDK — Python, Node.js, cURL, and
+  function calling. Point the OpenAI client at CollieAi by changing the
+  base_url.
 icon: openai
 ---
 
 # OpenAI SDK Integration
 
-This guide covers how to connect your application to CollieAI using the official OpenAI SDKs, cURL, or environment variables. Every example on this page works identically to a direct OpenAI call - the only difference is the base URL and API key.
+This guide covers how to connect your application to CollieAi using the official OpenAI SDKs, cURL, or environment variables. Every example on this page works identically to a direct OpenAI call - the only difference is the base URL and API key.
 
 ## Install the OpenAI SDK
+
+{% hint style="info" %}
+This guide covers the OpenAI SDK. If you use Anthropic's Claude, see Anthropic SDK Integration — CollieAi supports the native Messages API too.
+{% endhint %}
 
 {% tabs %}
 {% tab title="Python" %}
@@ -28,7 +36,7 @@ npm install openai
 
 ## Python SDK
 
-Create a client pointed at CollieAI:
+Create a client pointed at CollieAi:
 
 ```python
 from openai import OpenAI
@@ -51,7 +59,7 @@ print(response.choices[0].message.content)
 
 ### Python with Error Handling
 
-A production-ready example that handles all CollieAI-specific error cases:
+A production-ready example that handles all CollieAi-specific error cases:
 
 ```python
 from openai import OpenAI, APIError, AuthenticationError, RateLimitError
@@ -74,7 +82,7 @@ def send_message(user_input: str) -> str:
 
     except AuthenticationError:
         # 401: Invalid or expired API key
-        return "Authentication failed. Please check your CollieAI API key."
+        return "Authentication failed. Please check your CollieAi API key."
 
     except RateLimitError:
         # 429: Too many requests
@@ -318,7 +326,7 @@ client = OpenAI(
 {% endcolumn %}
 
 {% column %}
-#### After (CollieAI proxy)
+#### After (CollieAi proxy)
 
 ```python
 from openai import OpenAI
@@ -376,4 +384,4 @@ const response = await client.chat.completions.create({
 });
 ```
 
-This makes it easy to switch between direct OpenAI and CollieAI by changing environment variables -- no code changes at all.
+This makes it easy to switch between direct OpenAI and CollieAi by changing environment variables -- no code changes at all.
