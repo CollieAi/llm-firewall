@@ -1,6 +1,13 @@
+---
+description: >-
+  CollieAi Provider Tokens API — add, list, update, and delete encrypted
+  upstream LLM API keys   (OpenAI, Anthropic, and more) via /api/v1/tokens.
+icon: cloudscale
+---
+
 # Provider tokens
 
-Provider tokens store your LLM provider API keys (OpenAI, Anthropic, etc.) in CollieAI. The proxy uses these tokens to forward requests to upstream providers.
+Provider tokens store your LLM provider API keys (OpenAI, Anthropic, etc.) in CollieAi. The proxy uses these tokens to forward requests to upstream providers.
 
 ## GET /api/v1/tokens
 

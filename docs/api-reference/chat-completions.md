@@ -1,11 +1,19 @@
+---
+description: >-
+  CollieAi chat completions API — the OpenAI-compatible POST
+  /v1/chat/completions endpoint that   auto-routes gpt-* to OpenAI and claude-*
+  to Anthropic, plus GET /v1/models.
+icon: message
+---
+
 # Chat completions
 
 ## POST /v1/chat/completions
 
 Create a chat completion through the CollieAi proxy. OpenAI-compatible request format. CollieAi auto-routes to the right upstream provider based on the `model` field:
 
-- `gpt-*`, `o1-*`, `o3-*`, `o4-*`, `chatgpt-*`, `text-embedding-*`, `dall-e-*` → **OpenAI**
-- `claude-*`, `claude.*` → **Anthropic** (translated to and from the Messages API)
+* `gpt-*`, `o1-*`, `o3-*`, `o4-*`, `chatgpt-*`, `text-embedding-*`, `dall-e-*` → **OpenAI**
+* `claude-*`, `claude.*` → **Anthropic** (translated to and from the Messages API)
 
 If your project has an Anthropic provider token configured, sending `model="claude-sonnet-4-6"` Just Works — same request shape, same response shape, no client changes. Some OpenAI-only features (`n > 1`, `logprobs`, `response_format`, tool calling, vision) are rejected with `400 unsupported_for_provider` against `claude-*` models so behavior never silently differs from what you requested. See [Anthropic SDK Integration](../proxy-integration/anthropic-sdk-integration.md) for the full compatibility matrix.
 
@@ -93,11 +101,11 @@ The response body is 100% OpenAI-compatible. CollieAI metadata is returned via r
 
 Responses that reach the proxy pipeline (status 200, 400 policy violations, 429 rate limits, and upstream errors) include these headers. Early rejections (401 auth, 403 IP block, 422 validation) do not, since the request never entered the proxy.
 
-| Header                 | Type    | Description                                                                                                                                                                                            |
-| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Header                 | Type    | Description                                                                                                                                                                                          |
+| ---------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `X-Collie-Duration-Ms` | integer | Proxy processing time in milliseconds. For non-streaming this is the full round-trip; for streaming it reflects setup time (auth + input filtering) since headers are sent before the stream begins. |
-| `X-Collie-Proxied-At`  | integer | Unix timestamp when the request was processed                                                                                                                                                          |
-| `X-Collie-Api-Version` | string  | API version (currently `v1`)                                                                                                                                                                           |
+| `X-Collie-Proxied-At`  | integer | Unix timestamp when the request was processed                                                                                                                                                        |
+| `X-Collie-Api-Version` | string  | API version (currently `v1`)                                                                                                                                                                         |
 
 ### Streaming
 
@@ -115,13 +123,13 @@ data: [DONE]
 
 ### Error Responses
 
-| Status | Code                  | Description                              |
-| ------ | --------------------- | ---------------------------------------- |
+| Status | Code                  | Description                            |
+| ------ | --------------------- | -------------------------------------- |
 | `400`  | `content_blocked`     | Input message blocked by policy rule   |
 | `400`  | `response_blocked`    | Output response blocked by policy rule |
-| `401`  | `invalid_api_key`     | Missing or invalid API key               |
-| `429`  | `rate_limit_exceeded` | Too many requests                        |
-| `502`  | `upstream_error`      | Upstream LLM provider error              |
+| `401`  | `invalid_api_key`     | Missing or invalid API key             |
+| `429`  | `rate_limit_exceeded` | Too many requests                      |
+| `502`  | `upstream_error`      | Upstream LLM provider error            |
 
 ```json
 {

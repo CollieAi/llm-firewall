@@ -1,3 +1,10 @@
+---
+description: >-
+  CollieAi Rules API — create, list, update, delete, and test security rules
+  within a policy via /api/v1/policies/{policy_id}/rules, with all 9 rule types.
+icon: sliders-simple
+---
+
 # Rules
 
 Rules define individual checks within a policy. Each rule evaluates input messages, output messages, or both, and determines whether to allow, block, or modify content.
@@ -6,18 +13,18 @@ The project-independent endpoints under `/api/v1/policies/{policy_id}/rules` are
 
 ## Rule Properties
 
-| Field              | Type    | Required | Description                                                    |
-| ------------------ | ------- | -------- | -------------------------------------------------------------- |
-| `name`             | string  | Yes      | Rule display name                                              |
-| `description`      | string  | No       | Human-readable description                                     |
-| `rule_type`        | string  | Yes      | Rule type (see values below). Cannot be changed after creation |
-| `order`            | integer | No       | Evaluation order (lower runs first). Default: 0                |
+| Field              | Type    | Required | Description                                                                                                                                                       |
+| ------------------ | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`             | string  | Yes      | Rule display name                                                                                                                                                 |
+| `description`      | string  | No       | Human-readable description                                                                                                                                        |
+| `rule_type`        | string  | Yes      | Rule type (see values below). Cannot be changed after creation                                                                                                    |
+| `order`            | integer | No       | Evaluation order (lower runs first). Default: 0                                                                                                                   |
 | `direction`        | string  | Yes      | When to evaluate: `inbound` (Input), `outbound` (Output), or `all`. The dashboard labels these "Input" / "Output" / "All"; the API field uses the literal values. |
-| `decision`         | string  | Yes      | Action on match: `block` or `flag`                             |
-| `config`           | object  | Yes      | Rule-type-specific configuration (validated per `rule_type`)   |
-| `block_message`    | string  | No       | Custom message returned when the rule blocks a request         |
-| `is_enabled`       | boolean | No       | Whether the rule is active. Default: `true`                    |
-| `enforcement_mode` | string  | No       | `enforce` (default) or `monitor` (evaluate but never block)    |
+| `decision`         | string  | Yes      | Action on match: `allow`, `mask`, or `block`                                                                                                                      |
+| `config`           | object  | Yes      | Rule-type-specific configuration (validated per `rule_type`)                                                                                                      |
+| `block_message`    | string  | No       | Custom message returned when the rule blocks a request                                                                                                            |
+| `is_enabled`       | boolean | No       | Whether the rule is active. Default: `true`                                                                                                                       |
+| `enforcement_mode` | string  | No       | `enforce` (default) or `monitor` (evaluate but never block)                                                                                                       |
 
 ### Rule Types
 
@@ -280,9 +287,9 @@ Test a rule against sample content without affecting live traffic.
 
 ### Request Body
 
-| Field       | Type   | Required | Description                               |
-| ----------- | ------ | -------- | ----------------------------------------- |
-| `message`   | string | Yes      | The text content to test against the rule |
+| Field       | Type   | Required | Description                                                        |
+| ----------- | ------ | -------- | ------------------------------------------------------------------ |
+| `message`   | string | Yes      | The text content to test against the rule                          |
 | `direction` | string | No       | Test direction: `inbound` (Input side) or `outbound` (Output side) |
 
 ### Example Request

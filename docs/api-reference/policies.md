@@ -1,6 +1,13 @@
+---
+description: >-
+  CollieAi Policies API — create, list, update, delete, and set a default policy
+  via   /api/v1/policies, plus project-scoped policy endpoints.
+icon: square-sliders-vertical
+---
+
 # Policies
 
-Policies are collections of rules that define how CollieAI evaluates requests and responses. Policies are project-independent and can be shared across projects.
+Policies are collections of rules that define how CollieAi evaluates requests and responses. Policies are project-independent and can be shared across projects.
 
 ## Project-Independent Endpoints (Recommended)
 

@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi Dictionaries API — list, create, upload, extract, update, and delete
+  word-list dictionaries and dictionary groups for Dictionary Match rules via
+  /api/v1/dictionaries.
+icon: spell-check
+---
+
 # Dictionaries
 
 Dictionaries are reusable word/phrase lists used by Dictionary Match rules (`aho_corasick`) to match content. Two kinds: **user dictionaries** (created by you) and **system dictionaries** (pre-built, read-only).

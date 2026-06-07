@@ -1,3 +1,10 @@
+---
+description: >-
+  CollieAi Health API — liveness and readiness probes, ML model status, and
+  async queue depths via /api/v1/health endpoints for monitoring and Kubernetes.
+icon: stethoscope
+---
+
 # Health
 
 Health check endpoints for monitoring application status and dependencies.

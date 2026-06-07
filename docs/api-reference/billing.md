@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi Billing API — get subscription plan and usage, create Stripe Checkout
+  and Customer   Portal sessions, and handle Stripe webhooks via
+  /api/v1/billing.
+icon: comment-dollar
+---
+
 # Billing
 
 Subscription and usage management endpoints. These endpoints are only available when `BILLING_ENABLED=true` (cloud deployment). Self-hosted instances return `404` for all billing endpoints.
@@ -8,18 +16,18 @@ Subscription and usage management endpoints. These endpoints are only available 
 
 ## Plans
 
-The hosted product offers two plans, Free and Growth. Enterprise is delivered as a separate dedicated deployment and is not a plan within the hosted dashboard. See [Plans & Billing](/broken/pages/1bc2faea1a669a7ca8ed2292f75af759eb0a317a) for full details.
+The hosted product offers two plans, Free and Growth. Enterprise is delivered as a separate dedicated deployment and is not a plan within the hosted dashboard. See [Plans & Billing](../getting-started/plans-and-billing.md) for full details.
 
-| Plan       | API Calls       | Projects  | Prompt Size   | How to Subscribe        |
-| ---------- | --------------- | --------- | ------------- | ----------------------- |
-| **Free**   | 15,000/month    | 1         | 10,000 tokens | Automatic on signup     |
-| **Growth** | 2,000,000/month | Unlimited | Configurable  | Stripe Checkout (below) |
+| Plan       | API Calls              | Projects  | How to Subscribe        |
+| ---------- | ---------------------- | --------- | ----------------------- |
+| **Free**   | 20,000/month           | 1         | Automatic on signup     |
+| **Growth** | 250,000/month included | Unlimited | Stripe Checkout (below) |
 
-Enterprise customers run on a dedicated deployment of CollieAI with the hosted plan limits disabled. The endpoints documented here apply to the hosted product only. [Contact us](/broken/pages/6578b7e65c19cbbdb208cbfaa468c53988f18b0d) to discuss Enterprise.
+Enterprise customers run on a dedicated deployment of CollieAi with the hosted plan limits disabled. The endpoints documented here apply to the hosted product only. [Contact us](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/support) to discuss Enterprise.
 
 ## Stripe Status Mapping
 
-Stripe subscriptions can be in many states. CollieAI maps them to three simplified local statuses:
+Stripe subscriptions can be in many states. CollieAi maps them to three simplified local statuses:
 
 | Stripe Status        | Local Status | Meaning                            |
 | -------------------- | ------------ | ---------------------------------- |
@@ -170,4 +178,4 @@ Each event ID is tracked in Redis with a 48-hour TTL. Duplicate deliveries are a
 
 ## Admin Plan Management
 
-Admins can manually change a user's plan via `PATCH /api/v1/admin/users/{user_id}` with the `plan` field (`free` or `growth`). See [Admin API Reference](/broken/pages/5354f9aefdb7e60db3c3086ec0829df81d12b7f7) for details. This is used for manual overrides — for example, comping a customer to Growth-level limits without going through Stripe Checkout.
+Admins can manually change a user's plan via `PATCH /api/v1/admin/users/{user_id}` with the `plan` field (`free` or `growth`). See [Admin API Reference](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/api-reference) for details. This is used for manual overrides — for example, comping a customer to Growth-level limits without going through Stripe Checkout.

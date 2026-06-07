@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi Jobs API — create async filtering jobs, poll status, submit LLM
+  responses, and stream filtered chunks for your own model via POST /v1/jobs and
+  related endpoints.
+icon: briefcase-arrow-right
+---
+
 # Jobs
 
 Asynchronous request processing. Create a job to evaluate content against policy rules, with optional LLM forwarding and webhook delivery.
@@ -17,22 +25,22 @@ Create a new async job.
 | Field                | Type    | Required | Description                                                                                   |
 | -------------------- | ------- | -------- | --------------------------------------------------------------------------------------------- |
 | `message`            | string  | No       | Shorthand for a single user message. Mutually exclusive with `message_input`/`message_output` |
-| `message_input`      | string  | No       | Input message to evaluate against input rules                                             |
-| `message_output`     | string  | No       | Output message to evaluate against output rules                                           |
+| `message_input`      | string  | No       | Input message to evaluate against input rules                                                 |
+| `message_output`     | string  | No       | Output message to evaluate against output rules                                               |
 | `webhook_url`        | string  | Yes      | URL to receive the job result via POST                                                        |
 | `metadata`           | object  | No       | Arbitrary key-value pairs attached to the job                                                 |
 | `expires_in_seconds` | integer | No       | Job TTL in seconds. Default: 86400 (24h)                                                      |
-| `inbound_only`       | boolean | No       | Only run input rules, skip LLM forwarding. Default: `false`                                 |
+| `inbound_only`       | boolean | No       | Only run input rules, skip LLM forwarding. Default: `false`                                   |
 
 ### Field Behavior
 
-| Scenario                           | Input Rules | LLM Call | Output Rules            |
-| ---------------------------------- | ------------- | -------- | ------------------------- |
-| `message` only                     | Evaluated     | Yes      | Evaluated on LLM response |
-| `message_input` only               | Evaluated     | Yes      | Evaluated on LLM response |
-| `message_output` only              | Skipped       | No       | Evaluated                 |
-| `message_input` + `message_output` | Evaluated     | No       | Evaluated                 |
-| `inbound_only: true` + `message`   | Evaluated     | No       | Skipped                   |
+| Scenario                           | Input Rules | LLM Call | Output Rules              |
+| ---------------------------------- | ----------- | -------- | ------------------------- |
+| `message` only                     | Evaluated   | Yes      | Evaluated on LLM response |
+| `message_input` only               | Evaluated   | Yes      | Evaluated on LLM response |
+| `message_output` only              | Skipped     | No       | Evaluated                 |
+| `message_input` + `message_output` | Evaluated   | No       | Evaluated                 |
+| `inbound_only: true` + `message`   | Evaluated   | No       | Skipped                   |
 
 ### Example Request
 
@@ -129,14 +137,14 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
 
 ### Job Statuses
 
-| Status              | Description                                               |
-| ------------------- | --------------------------------------------------------- |
-| `pending`           | Created, waiting to be processed                          |
-| `processing`        | Currently being evaluated                                 |
+| Status              | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| `pending`           | Created, waiting to be processed                        |
+| `processing`        | Currently being evaluated                               |
 | `awaiting_response` | Input rules passed, waiting for LLM response submission |
-| `completed`         | All processing finished                                   |
-| `failed`            | Processing encountered an error                           |
-| `expired`           | Job exceeded its TTL                                      |
+| `completed`         | All processing finished                                 |
+| `failed`            | Processing encountered an error                         |
+| `expired`           | Job exceeded its TTL                                    |
 
 ### Error Responses
 
@@ -207,16 +215,16 @@ Submit one chunk of an upstream-model stream for filtering. Use this when **you 
 
 ### Path Parameters
 
-| Parameter | Type   | Description                                      |
-| --------- | ------ | ------------------------------------------------ |
-| `job_id`  | string | The job identifier returned by `POST /v1/jobs`   |
+| Parameter | Type   | Description                                    |
+| --------- | ------ | ---------------------------------------------- |
+| `job_id`  | string | The job identifier returned by `POST /v1/jobs` |
 
 ### Request Body
 
-| Field      | Type    | Required | Description                                                                                                                                              |
-| ---------- | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sequence` | integer | Yes      | Monotonic per-job chunk index, starting at `0`. Each subsequent chunk MUST be `N+1`. Repeating the last sequence is treated as an idempotent retry.       |
-| `content`  | string  | Yes      | Text chunk from the upstream model. Empty string is valid (e.g. for a `sequence=N` chunk whose only purpose is to mark `is_final=true`).                 |
+| Field      | Type    | Required | Description                                                                                                                                                                     |
+| ---------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sequence` | integer | Yes      | Monotonic per-job chunk index, starting at `0`. Each subsequent chunk MUST be `N+1`. Repeating the last sequence is treated as an idempotent retry.                             |
+| `content`  | string  | Yes      | Text chunk from the upstream model. Empty string is valid (e.g. for a `sequence=N` chunk whose only purpose is to mark `is_final=true`).                                        |
 | `is_final` | boolean | No       | `true` on the last chunk of the stream. Triggers the engine's final flush and marks the session terminal. Further submits return `409 chunk_session_finished`. Default `false`. |
 
 ### Idempotency
@@ -254,38 +262,38 @@ curl -X POST https://app.collieai.io/v1/jobs/job_abc123def456/chunks \
 }
 ```
 
-| Field        | Type    | Description                                                                                                                                                       |
-| ------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sequence`   | integer | Echo of the submitted sequence.                                                                                                                                   |
-| `accepted`   | boolean | Always `true` on a `200` response. Errors return the standard `{"error": {...}}` envelope instead.                                                                |
-| `emits`      | array   | Filtered safe chunks. May be empty if the upstream chunk is fully held back in the engine's stable-window buffer. Forward `content` to your end user in order.    |
-| `finished`   | boolean | `true` once the session is terminal (final flush completed OR a rule fired a block). After `finished=true`, further submits return `409 chunk_session_finished`.  |
+| Field      | Type    | Description                                                                                                                                                      |
+| ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sequence` | integer | Echo of the submitted sequence.                                                                                                                                  |
+| `accepted` | boolean | Always `true` on a `200` response. Errors return the standard `{"error": {...}}` envelope instead.                                                               |
+| `emits`    | array   | Filtered safe chunks. May be empty if the upstream chunk is fully held back in the engine's stable-window buffer. Forward `content` to your end user in order.   |
+| `finished` | boolean | `true` once the session is terminal (final flush completed OR a rule fired a block). After `finished=true`, further submits return `409 chunk_session_finished`. |
 
 Each emit:
 
-| Field             | Type    | Description                                                                                                                                          |
-| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`         | string  | Safe text to forward to your end user. Masked content already has placeholders applied.                                                              |
-| `blocked`         | boolean | `true` when a rule fired a block. The emit is the terminal emit; the session is finished.                                                            |
-| `final`           | boolean | `true` for the terminal sentinel emit (sent after `is_final=true` drains the buffer, or for a blocked emit).                                          |
-| `triggered_rules` | array   | Rule audit entries that fired on this emit (rule id, name, decision, etc.).                                                                          |
+| Field             | Type    | Description                                                                                                  |
+| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `content`         | string  | Safe text to forward to your end user. Masked content already has placeholders applied.                      |
+| `blocked`         | boolean | `true` when a rule fired a block. The emit is the terminal emit; the session is finished.                    |
+| `final`           | boolean | `true` for the terminal sentinel emit (sent after `is_final=true` drains the buffer, or for a blocked emit). |
+| `triggered_rules` | array   | Rule audit entries that fired on this emit (rule id, name, decision, etc.).                                  |
 
 ### Error Responses
 
 All errors use the OpenAI-compatible `{"error": {"message", "type", "code"}}` envelope.
 
-| Status | Code                              | Description                                                                                                                                              |
-| ------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `400`  | `chunk_streaming_unsupported`     | The project's active policy can't be served by the streaming engine (`streaming_mode = "buffered"`, multi-rule policy, or `STREAMING_MODES_ENABLED=false` on the host). |
-| `401`  | -                                 | Missing or invalid API key.                                                                                                                              |
-| `404`  | -                                 | Job not found or not owned by the API key's project.                                                                                                     |
-| `409`  | `chunk_sequence_conflict`         | `sequence` is not the next expected value (gap, or re-submitting an old sequence after later ones were accepted). Response includes `expected_sequence` and `received_sequence`. |
-| `409`  | `chunk_idempotency_conflict`      | `sequence` was previously submitted with different content. Use a new sequence number to send different content.                                          |
-| `409`  | `chunk_session_finished`          | A prior chunk had `is_final=true` or a rule fired a block. Create a new job to start a new stream.                                                       |
-| `409`  | `chunk_concurrent_submit`         | Another submit for the same job is in-flight. Submissions for one job must be serial; wait for the prior response.                                       |
-| `409`  | `chunk_policy_changed`            | The project's policy changed mid-stream. Create a new job to use the updated policy.                                                                     |
-| `409`  | `chunk_session_unrecoverable`     | A prior commit left the job's stream in a state that can't be repaired. Create a new job.                                                                |
-| `504`  | `chunk_filter_timeout`            | Filtering exceeded the per-chunk budget. Retry the same sequence with backoff.                                                                            |
+| Status | Code                          | Description                                                                                                                                                                      |
+| ------ | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | `chunk_streaming_unsupported` | The project's active policy can't be served by the streaming engine (`streaming_mode = "buffered"`, multi-rule policy, or `STREAMING_MODES_ENABLED=false` on the host).          |
+| `401`  | -                             | Missing or invalid API key.                                                                                                                                                      |
+| `404`  | -                             | Job not found or not owned by the API key's project.                                                                                                                             |
+| `409`  | `chunk_sequence_conflict`     | `sequence` is not the next expected value (gap, or re-submitting an old sequence after later ones were accepted). Response includes `expected_sequence` and `received_sequence`. |
+| `409`  | `chunk_idempotency_conflict`  | `sequence` was previously submitted with different content. Use a new sequence number to send different content.                                                                 |
+| `409`  | `chunk_session_finished`      | A prior chunk had `is_final=true` or a rule fired a block. Create a new job to start a new stream.                                                                               |
+| `409`  | `chunk_concurrent_submit`     | Another submit for the same job is in-flight. Submissions for one job must be serial; wait for the prior response.                                                               |
+| `409`  | `chunk_policy_changed`        | The project's policy changed mid-stream. Create a new job to use the updated policy.                                                                                             |
+| `409`  | `chunk_session_unrecoverable` | A prior commit left the job's stream in a state that can't be repaired. Create a new job.                                                                                        |
+| `504`  | `chunk_filter_timeout`        | Filtering exceeded the per-chunk budget. Retry the same sequence with backoff.                                                                                                   |
 
 ***
 
@@ -299,15 +307,15 @@ Server-Sent Events (SSE) stream of the filtered chunks produced by `POST /v1/job
 
 ### Path Parameters
 
-| Parameter | Type   | Description                                      |
-| --------- | ------ | ------------------------------------------------ |
-| `job_id`  | string | The job identifier returned by `POST /v1/jobs`   |
+| Parameter | Type   | Description                                    |
+| --------- | ------ | ---------------------------------------------- |
+| `job_id`  | string | The job identifier returned by `POST /v1/jobs` |
 
 ### Request Headers
 
-| Header           | Required | Description                                                                                                                                                                           |
-| ---------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Last-Event-ID`  | No       | Standard SSE resume token — the ID of the last event the client saw. Subscribers resume from the next event. Absent → full backlog replay from chunk 0.                              |
+| Header          | Required | Description                                                                                                                                             |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Last-Event-ID` | No       | Standard SSE resume token — the ID of the last event the client saw. Subscribers resume from the next event. Absent → full backlog replay from chunk 0. |
 
 ### Example Request
 
@@ -338,33 +346,33 @@ event: end
 data: {"reason": "final"}
 ```
 
-| Field            | Type    | Description                                                                                                  |
-| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
-| `sequence`       | integer | The chunk-submission sequence this emit came from. Multiple emits can share a sequence.                       |
-| `content`        | string  | Safe text to render to the end user.                                                                          |
-| `blocked`        | boolean | `true` when a rule fired a block. Terminal for the stream.                                                    |
-| `final`          | boolean | `true` for the terminal sentinel emit on `is_final=true` chunks.                                              |
-| `triggered_rules`| array   | Rule audit entries that fired on this emit.                                                                   |
+| Field             | Type    | Description                                                                             |
+| ----------------- | ------- | --------------------------------------------------------------------------------------- |
+| `sequence`        | integer | The chunk-submission sequence this emit came from. Multiple emits can share a sequence. |
+| `content`         | string  | Safe text to render to the end user.                                                    |
+| `blocked`         | boolean | `true` when a rule fired a block. Terminal for the stream.                              |
+| `final`           | boolean | `true` for the terminal sentinel emit on `is_final=true` chunks.                        |
+| `triggered_rules` | array   | Rule audit entries that fired on this emit.                                             |
 
 The stream always closes with a single `end` event:
 
-| `reason`                  | Meaning                                                                                                                                                  |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `final`                   | Normal end of stream — the last chunk submitted with `is_final=true` was processed.                                                                       |
-| `blocked`                 | A rule fired a block and terminated the stream.                                                                                                          |
-| `session_finished`        | The session was already terminal when the SSE consumer connected (e.g. SSE opened late, after the producer finished).                                    |
-| `session_unrecoverable`   | The job's chunk stream entered a state that can't be repaired. The customer's backend should create a new job.                                            |
-| `idle_timeout`            | No new emits arrived within the idle window and the session is not terminal. The consumer should reconnect with `Last-Event-ID` if the job is still live.|
-| `upstream_error`          | The SSE reader hit an internal error reading the chunk stream. Reconnect with `Last-Event-ID`.                                                            |
+| `reason`                | Meaning                                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `final`                 | Normal end of stream — the last chunk submitted with `is_final=true` was processed.                                                                       |
+| `blocked`               | A rule fired a block and terminated the stream.                                                                                                           |
+| `session_finished`      | The session was already terminal when the SSE consumer connected (e.g. SSE opened late, after the producer finished).                                     |
+| `session_unrecoverable` | The job's chunk stream entered a state that can't be repaired. The customer's backend should create a new job.                                            |
+| `idle_timeout`          | No new emits arrived within the idle window and the session is not terminal. The consumer should reconnect with `Last-Event-ID` if the job is still live. |
+| `upstream_error`        | The SSE reader hit an internal error reading the chunk stream. Reconnect with `Last-Event-ID`.                                                            |
 
 Keepalive comments (`: keepalive\n\n`) are sent periodically when no new emits arrive, so reverse proxies don't idle-close the TCP connection. Treat them as no-ops.
 
 ### Error Responses
 
-| Status | Description                                                            |
-| ------ | ---------------------------------------------------------------------- |
-| `401`  | Missing or invalid API key                                             |
-| `404`  | Job not found or not owned by the API key's project                    |
+| Status | Description                                         |
+| ------ | --------------------------------------------------- |
+| `401`  | Missing or invalid API key                          |
+| `404`  | Job not found or not owned by the API key's project |
 
 ***
 

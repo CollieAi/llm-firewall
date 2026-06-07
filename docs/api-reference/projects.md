@@ -1,6 +1,14 @@
+---
+description: >-
+  CollieAi Projects API — create, list, update, and delete projects and their
+  settings (active policy, rate limit, data retention, streaming mode) via
+  /api/v1/projects.
+icon: diagram-project
+---
+
 # Projects
 
-Projects are the top-level organizational unit in CollieAI. Each project has its own API keys, policies, and request logs.
+Projects are the top-level organizational unit in CollieAi. Each project has its own API keys, policies, and request logs.
 
 ## GET /api/v1/projects
 
@@ -60,15 +68,15 @@ Create a new project. Automatically creates an API key and assigns the user's de
 
 ### Request Body
 
-| Field                  | Type    | Required | Description                                                                                          |
-| ---------------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| `name`                 | string  | Yes      | Project name                                                                                         |
-| `description`          | string  | No       | Project description                                                                                  |
-| `body_retention_hours` | integer | No       | Hours to keep `request_body`/`response_body`. Default `48`, range `0–720`. `0` = never store bodies. |
-| `log_retention_days`   | integer | No       | Days to keep log rows for audit. Default `90`, range `1–365`.                                        |
+| Field                  | Type    | Required | Description                                                                                                                                                                                                                                                         |
+| ---------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                 | string  | Yes      | Project name                                                                                                                                                                                                                                                        |
+| `description`          | string  | No       | Project description                                                                                                                                                                                                                                                 |
+| `body_retention_hours` | integer | No       | Hours to keep `request_body`/`response_body`. Default `48`, range `0–720`. `0` = never store bodies.                                                                                                                                                                |
+| `log_retention_days`   | integer | No       | Days to keep log rows for audit. Default `90`, range `1–365`.                                                                                                                                                                                                       |
 | `streaming_mode`       | string  | No       | One of `"auto"` (default), `"buffered"`, or `"incremental"`. Controls whether responses are delivered to the client incrementally or after the full response has been filtered. See [Streaming](../proxy-integration/streaming.md) for the delivery-path semantics. |
 
-The invariant `body_retention_hours ≤ log_retention_days × 24` is enforced. See [Data Retention](/broken/pages/172404763b2f30d792f595b19001edc4d88ad3d5).
+The invariant `body_retention_hours ≤ log_retention_days × 24` is enforced. See [Data Retention](../projects-and-policies/data-retention.md).
 
 ### Example Request
 
@@ -177,19 +185,19 @@ Update a project. All fields are optional; only provided fields are updated.
 
 ### Request Body
 
-| Field                  | Type    | Description                                                                                                                                     |
-| ---------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                 | string  | New project name                                                                                                                                |
-| `description`          | string  | New project description                                                                                                                         |
-| `active_policy_id`     | string  | ID of the policy to set as active                                                                                                               |
-| `filter_all_messages`  | boolean | Whether to filter all messages in conversation history (top-level field, not nested under `settings`).                                           |
-| `is_active`            | boolean | Soft-delete toggle. Set to `false` to hide the project without losing data.                                                                     |
-| `rate_limit_rpm`       | integer | Max requests per minute for this project. Range `1–10000`, or `null` for unlimited.                                                              |
-| `body_retention_hours` | integer | Hours to keep `request_body`/`response_body`. Range `0–720`. Validated against current `log_retention_days` if only one of the two is supplied. |
-| `log_retention_days`   | integer | Days to keep log rows for audit. Range `1–365`. Validated against current `body_retention_hours` if only one of the two is supplied.            |
+| Field                  | Type    | Description                                                                                                                                                                                                 |
+| ---------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                 | string  | New project name                                                                                                                                                                                            |
+| `description`          | string  | New project description                                                                                                                                                                                     |
+| `active_policy_id`     | string  | ID of the policy to set as active                                                                                                                                                                           |
+| `filter_all_messages`  | boolean | Whether to filter all messages in conversation history (top-level field, not nested under `settings`).                                                                                                      |
+| `is_active`            | boolean | Soft-delete toggle. Set to `false` to hide the project without losing data.                                                                                                                                 |
+| `rate_limit_rpm`       | integer | Max requests per minute for this project. Range `1–10000`, or `null` for unlimited.                                                                                                                         |
+| `body_retention_hours` | integer | Hours to keep `request_body`/`response_body`. Range `0–720`. Validated against current `log_retention_days` if only one of the two is supplied.                                                             |
+| `log_retention_days`   | integer | Days to keep log rows for audit. Range `1–365`. Validated against current `body_retention_hours` if only one of the two is supplied.                                                                        |
 | `streaming_mode`       | string  | One of `"auto"`, `"buffered"`, or `"incremental"`. Takes effect on the next request. Sending `null` is rejected — omit the field to leave it unchanged. See [Streaming](../proxy-integration/streaming.md). |
 
-Retention changes apply to **new logs only**; existing rows keep their original expiry. See [Data Retention](/broken/pages/172404763b2f30d792f595b19001edc4d88ad3d5).
+Retention changes apply to **new logs only**; existing rows keep their original expiry. See [Data Retention](../projects-and-policies/data-retention.md).
 
 ### Example Request
 

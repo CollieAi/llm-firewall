@@ -29,7 +29,7 @@
 
 ## Security Rules
 
-* [Overview](security-rules/overview.md)
+* [Security rules overview](security-rules/overview.md)
 * [Enforcement Mode](security-rules/enforcement-mode.md)
 * [PII detection and redaction](security-rules/detecting-pii/README.md)
   * [Regex patterns](security-rules/detecting-pii/regex-patterns.md)
@@ -63,7 +63,7 @@
 
 ## Support
 
-* [Overview](support/overview.md)
+* [Support overview](support/overview.md)
 * [Creating tickets](support/creating-tickets.md)
 * [Managing tickets (admin)](support/managing-tickets.md)
 
@@ -74,7 +74,7 @@
 
 ## API Reference
 
-* [Overview](api-reference/overview.md)
+* [API reference overview](api-reference/overview.md)
 * [Auth](api-reference/auth.md)
 * [Chat completions](api-reference/chat-completions.md)
 * [Messages (native Anthropic)](api-reference/messages.md)

@@ -1,6 +1,14 @@
-# Api keys
+---
+description: >-
+  CollieAi API Keys API — create, list, and deactivate project-scoped clai_ keys
+  that authenticate requests to the proxy via
+  /api/v1/projects/{project_id}/api-keys.
+icon: rectangle-api
+---
 
-API keys authenticate requests to the CollieAI proxy (`/v1/*` endpoints). Each key is scoped to a single project and uses the `clai_` prefix.
+# API keys
+
+API keys authenticate requests to the CollieAi proxy (`/v1/*` endpoints). Each key is scoped to a single project and uses the `clai_` prefix.
 
 ## GET /api/v1/projects/{project\_id}/api-keys
 

@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi Support Tickets API — create tickets, list and view them, add
+  messages and attachments, and admin endpoints for managing all tickets via
+  /api/v1/support and /api/v1/admin/tickets.
+icon: message
+---
+
 # Support tickets
 
 ## User Endpoints
@@ -150,7 +158,7 @@ All admin endpoints require the `admin` role. Non-admins receive `403 Forbidden`
 
 ### GET /api/v1/admin/tickets
 
-List all tickets across all users. See [Managing Tickets (Admin)](/broken/pages/dfc00dc47f5f17108c597c859c39d2e0e5a2a228) for query parameters.
+List all tickets across all users. See [Managing Tickets (Admin)](../support/managing-tickets.md) for query parameters.
 
 ### GET /api/v1/admin/tickets/{ticket\_id}
 

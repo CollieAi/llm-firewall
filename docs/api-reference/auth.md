@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi authentication API reference — endpoints for email/password and
+  Google OAuth login, password management, session info, IP allowlist, and
+  logout.
+icon: fingerprint
+---
+
 # Auth
 
 Authentication endpoints for login, logout, password management, and OAuth.

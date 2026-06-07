@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi Analytics API — project-scoped KPIs, time-series, threat breakdown,
+  top rules, and   streaming-engine metrics over 24h/7d/30d windows via
+  /api/v1/analytics.
+icon: magnifying-glass-chart
+---
+
 # Analytics
 
 Analytics endpoints back the dashboard's KPI cards, charts, top-rules table, and the Streaming engine section. All responses are project-scoped and use the same `range` window (`24h`, `7d`, `30d`).
@@ -12,11 +20,11 @@ Headline KPIs (requests, blocks, errors, tokens, latency percentiles, rule firin
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `project_id` | string | Yes | Project to scope the query to. |
-| `range` | string | No | `"24h"` (default), `"7d"`, or `"30d"`. Drives both the window and the bucket granularity (hour / 6h / day). |
-| `scope` | string | No | `"all"` (default), `"dropin"`, `"async"`, or `"filtering"`. Filters request_logs by event shape so cards don't mix incomparable traffic types. |
+| Parameter    | Type   | Required | Description                                                                                                                                     |
+| ------------ | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project_id` | string | Yes      | Project to scope the query to.                                                                                                                  |
+| `range`      | string | No       | `"24h"` (default), `"7d"`, or `"30d"`. Drives both the window and the bucket granularity (hour / 6h / day).                                     |
+| `scope`      | string | No       | `"all"` (default), `"dropin"`, `"async"`, or `"filtering"`. Filters request\_logs by event shape so cards don't mix incomparable traffic types. |
 
 ### Response — `200 OK`
 
@@ -106,10 +114,10 @@ Headline KPIs (requests, blocks, errors, tokens, latency percentiles, rule firin
 
 ### Error Responses
 
-| Status | Description |
-|---|---|
-| `401` | Not authenticated |
-| `404` | Project not found or not owned by the authenticated user |
+| Status | Description                                              |
+| ------ | -------------------------------------------------------- |
+| `401`  | Not authenticated                                        |
+| `404`  | Project not found or not owned by the authenticated user |
 
 ## GET /api/v1/analytics/streaming
 
@@ -121,10 +129,10 @@ Streaming engine KPIs for the window. Backed by the columns added in ClickHouse 
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `project_id` | string | Yes | Project to scope the query to. |
-| `range` | string | No | `"24h"` (default), `"7d"`, or `"30d"`. Same window contract as `/analytics`. |
+| Parameter    | Type   | Required | Description                                                                  |
+| ------------ | ------ | -------- | ---------------------------------------------------------------------------- |
+| `project_id` | string | Yes      | Project to scope the query to.                                               |
+| `range`      | string | No       | `"24h"` (default), `"7d"`, or `"30d"`. Same window contract as `/analytics`. |
 
 ### Response — `200 OK`
 
@@ -164,24 +172,24 @@ Streaming engine KPIs for the window. Backed by the columns added in ClickHouse 
 
 ### KPI field semantics
 
-| Field | Meaning |
-|---|---|
-| `total_requests` | Every row in the window, regardless of delivery. |
-| `total_streaming_engine_requests` | Rows where the streaming engine ran (`delivery != ''`). Denominator for `streaming_share_pct` and `upstream_error_rate_pct`. |
-| `streaming_delivery_count` / `buffered_delivery_count` | Per-delivery counts within the engine-served subset. |
-| `streaming_share_pct` | `streaming_count / engine_total`. The fraction of engine-served traffic that actually streamed incrementally. |
-| `mid_stream_block_rate_pct` | `streaming_rule_block / streaming_count`. How often the engine fired a block on a streaming request — those are the cases where the client saw partial content before policy caught up. |
-| `client_disconnect_rate_pct` | `client_disconnect / streaming_count`. Streaming requests where the client closed the connection before completion. |
-| `upstream_error_rate_pct` | `upstream_error / engine_total`. Engine-served requests that errored mid-stream. |
-| `max_held_chars_p50/95/99` | Distribution of peak chars buffered by the engine per request (latency proxy — higher = more added latency). |
-| `chars_emitted_before_block_p50/95/99` | Distribution of safe chars delivered to the client before a streaming block fired (security proxy). |
+| Field                                                  | Meaning                                                                                                                                                                                 |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `total_requests`                                       | Every row in the window, regardless of delivery.                                                                                                                                        |
+| `total_streaming_engine_requests`                      | Rows where the streaming engine ran (`delivery != ''`). Denominator for `streaming_share_pct` and `upstream_error_rate_pct`.                                                            |
+| `streaming_delivery_count` / `buffered_delivery_count` | Per-delivery counts within the engine-served subset.                                                                                                                                    |
+| `streaming_share_pct`                                  | `streaming_count / engine_total`. The fraction of engine-served traffic that actually streamed incrementally.                                                                           |
+| `mid_stream_block_rate_pct`                            | `streaming_rule_block / streaming_count`. How often the engine fired a block on a streaming request — those are the cases where the client saw partial content before policy caught up. |
+| `client_disconnect_rate_pct`                           | `client_disconnect / streaming_count`. Streaming requests where the client closed the connection before completion.                                                                     |
+| `upstream_error_rate_pct`                              | `upstream_error / engine_total`. Engine-served requests that errored mid-stream.                                                                                                        |
+| `max_held_chars_p50/95/99`                             | Distribution of peak chars buffered by the engine per request (latency proxy — higher = more added latency).                                                                            |
+| `chars_emitted_before_block_p50/95/99`                 | Distribution of safe chars delivered to the client before a streaming block fired (security proxy).                                                                                     |
 
 ### Error Responses
 
-| Status | Description |
-|---|---|
-| `401` | Not authenticated |
-| `404` | Project not found or not owned by the authenticated user |
+| Status | Description                                              |
+| ------ | -------------------------------------------------------- |
+| `401`  | Not authenticated                                        |
+| `404`  | Project not found or not owned by the authenticated user |
 
 ## GET /api/v1/analytics/streaming/timeseries
 
@@ -193,10 +201,10 @@ Bucketed counterpart to `/analytics/streaming`. Same data, one row per bucket. P
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `project_id` | string | Yes | Project to scope the query to. |
-| `range` | string | No | `"24h"` (default; `hour` buckets), `"7d"` (`6h` buckets), or `"30d"` (`day` buckets). |
+| Parameter    | Type   | Required | Description                                                                           |
+| ------------ | ------ | -------- | ------------------------------------------------------------------------------------- |
+| `project_id` | string | Yes      | Project to scope the query to.                                                        |
+| `range`      | string | No       | `"24h"` (default; `hour` buckets), `"7d"` (`6h` buckets), or `"30d"` (`day` buckets). |
 
 ### Response — `200 OK`
 
@@ -230,7 +238,7 @@ Bucketed counterpart to `/analytics/streaming`. Same data, one row per bucket. P
 
 ### Error Responses
 
-| Status | Description |
-|---|---|
-| `401` | Not authenticated |
-| `404` | Project not found or not owned by the authenticated user |
+| Status | Description                                              |
+| ------ | -------------------------------------------------------- |
+| `401`  | Not authenticated                                        |
+| `404`  | Project not found or not owned by the authenticated user |

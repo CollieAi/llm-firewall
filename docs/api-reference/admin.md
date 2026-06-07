@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi Admin API — system statistics, user management, and management of
+  system dictionaries, policies, and rules via /api/v1/admin endpoints (admin
+  role required).
+icon: user-tie
+---
+
 # Admin
 
 Administrative endpoints for system-wide management. All endpoints require the `admin` role and return `403 Forbidden` for non-admin users.
@@ -507,7 +515,7 @@ No response body.
 
 ## System Policy Rules
 
-Manage rules within system policies. These follow the same request/response format as the standard [Rules](/broken/pages/00b5637d96dfd265be895ee331044894a7a072c0) endpoints.
+Manage rules within system policies. These follow the same request/response format as the standard [Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) endpoints.
 
 ### GET /api/v1/admin/policies/{policy\_id}/rules
 

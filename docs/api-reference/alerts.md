@@ -1,3 +1,11 @@
+---
+description: >-
+  CollieAi Alerts API — create, list, update, and delete alert rules and
+  acknowledge alert events for a project via
+  /api/v1/alerts/projects/{project_id}.
+icon: siren-on
+---
+
 # Alerts
 
 Automated monitoring for projects. Define alert rules that trigger events when metrics exceed thresholds, then track and acknowledge events.
