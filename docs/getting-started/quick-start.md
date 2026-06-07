@@ -1,10 +1,13 @@
 ---
+description: >-
+  CollieAi quick start — get your first secured LLM call running in about five
+  minutes. Sign up, add a provider token, create a policy, and send a request.
 icon: bolt-auto
 ---
 
 # Quick start
 
-Get your first secured LLM call running in about 5 minutes.
+This CollieAi quick start gets your first secured LLM call running in about five minutes. You will sign up, add a provider token, create a project and policy, generate an API key, and send your first request through the CollieAi AI firewall.
 
 {% stepper %}
 {% step %}
@@ -12,24 +15,24 @@ Get your first secured LLM call running in about 5 minutes.
 
 Go to [app.collieai.io](https://app.collieai.io/) and create an account. You can sign in with **Google** (your account is created automatically on first login) or register with **email and password**.
 
-All new accounts start on the **Free plan** - 15,000 API calls/month with full access to every security feature. See [Plans & Billing](/broken/pages/54aaf323a9267c336d93a3e24f21fa2eff822e46) for details.
+All new accounts start on the **Free plan** - 20,000 API calls/month with full access to every security feature. See [Plans & Billing](plans-and-billing.md) for details.
 
-See [Authentication](/broken/pages/1845ab390e5ce0610c3639336c3607da0944e5f1) for more details on sign-in methods.
+See [Authentication](authentication.md) for more details on sign-in methods.
 {% endstep %}
 
 {% step %}
 ### Add a Provider Token
 
-CollieAI needs your LLM provider's API key to forward requests on your behalf.
+CollieAi needs your LLM provider's API key to forward requests on your behalf.
 
 1. Open **Settings > Provider Tokens** in the dashboard.
 2. Click **Add Token**.
 3. Select the provider (e.g., OpenAI) and paste your API key (`sk-...`).
-4. Check **Set as default** so CollieAI uses this token when proxying requests.
+4. Check **Set as default** so CollieAi uses this token when proxying requests.
 
 Your key is encrypted at rest and never exposed in logs or responses.
 
-See [Provider Tokens](/broken/pages/0e225d0c0161078d0be1ce78f322f6f14c27bb07) for more details.
+See [Provider Tokens](../projects-and-policies/provider-tokens.md) for more details.
 {% endstep %}
 
 {% step %}
@@ -41,7 +44,7 @@ Projects group your policies, rules, and API keys together.
 2. Click **New Project**.
 3. Give it a name (e.g., `my-chatbot`) and an optional description.
 
-See [Projects](/broken/pages/12493f7755c3bc9f868977b8eb076b8598bb0ddb) for more details.
+See [Projects](../projects-and-policies/projects.md) for more details.
 {% endstep %}
 
 {% step %}
@@ -61,7 +64,7 @@ Policies contain the security rules that filter your traffic.
 | Decision  | Mask                                             |
 | Pattern   | `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}` |
 
-See [Policies](/broken/pages/838f7df49ce642ec55293bc256df97f808287402) and [Security Rules](/broken/pages/a232c2070154c78b64b970b0ed0c632117af12b9) for more details.
+See [Policies](../projects-and-policies/policies.md) and [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) for more details.
 {% endstep %}
 
 {% step %}
@@ -77,7 +80,7 @@ clai_AbCdEfGhSwDWWArWWDcpQrStUvWxYz012345678901234
 
 Store it securely in an environment variable or secrets manager.
 
-See [API Keys](/broken/pages/7feac2acca8bcde057933e84cdddfb8ff4d6f647) for more details.
+See [API Keys](api-keys.md) for more details.
 {% endstep %}
 
 {% step %}
@@ -89,7 +92,7 @@ Install the OpenAI Python SDK if you have not already:
 pip install openai
 ```
 
-Point it at CollieAI by changing the `base_url` and using your CollieAI API key:
+Point it at CollieAi by changing the `base_url` and using your CollieAi API key:
 
 ```python
 from openai import OpenAI
@@ -109,7 +112,11 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-That is it. Your request now flows through CollieAI's security pipeline before reaching OpenAI.
+{% hint style="info" %}
+This example uses the OpenAI SDK, but CollieAi is provider-agnostic. You can also use the Anthropic SDK against the native Messages API, and route to Anthropic Claude, Google Gemini, Azure OpenAI, AWS Bedrock, or self-hosted models — the same security pipeline applies.
+{% endhint %}
+
+That is it. Your request now flows through CollieAi's security pipeline before reaching OpenAI.
 {% endstep %}
 
 {% step %}
@@ -126,13 +133,25 @@ response = client.chat.completions.create(
 )
 ```
 
-CollieAI intercepts the request, masks the email address before it reaches OpenAI, and returns the model's response. Open the **Logs** page in the dashboard to see the request with the triggered `mask-emails` rule and the redacted content.
+CollieAi intercepts the request, masks the email address before it reaches OpenAI, and returns the model's response. Open the **Logs** page in the dashboard to see the request with the triggered `mask-emails` rule and the redacted content.
 {% endstep %}
 {% endstepper %}
 
 ## Next Steps
 
-* [Proxy Integration](/broken/pages/157c3242e7f3564dfdc06320e342fd0f5853f712) -- Streaming, error handling, and advanced SDK usage.
-* [Async Jobs](/broken/pages/0314bdda43619d99e4dcd4c0a5ebbd9996c1b9ec) -- Submit requests and receive results via webhooks.
-* [Security Rules](/broken/pages/a232c2070154c78b64b970b0ed0c632117af12b9) -- Explore every rule type: PII detection, prompt injection blocking, URL filtering, and more.
-* [Monitoring](/broken/pages/c43f7395c96e1c24318aa800d9a4b7229fa328db) -- View logs, analytics, and configure alerts.
+* [Proxy Integration](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/proxy-integration) -- Streaming, error handling, and advanced SDK usage.
+* [Async Jobs](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/async-jobs) -- Submit requests and receive results via webhooks.
+* [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) -- Explore every rule type: PII detection, prompt injection blocking, URL filtering, and more.
+* [Monitoring](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/monitoring) -- View logs, analytics, and configure alerts.
+
+### Frequently asked questions
+
+**How long does it take to integrate CollieAi?** Integrating CollieAi takes about five minutes. You change a single `base_url` in your existing OpenAI or Anthropic SDK — no rewrite, no new client library — and your requests immediately flow through the CollieAi AI firewall.
+
+**Do I need to change my application code to use CollieAi?** No. CollieAi is a drop-in, provider-agnostic proxy, so you only change the `base_url` your SDK points at. Your existing request and response code works as-is, which is why it is compatible with most existing LLM infrastructure.
+
+**Can a small dev team integrate CollieAi quickly?** Yes. CollieAi is built for rapid integration by small dev teams and startups: there is no infrastructure to deploy, no SDK to swap, and the full guardrail stack works from the first request through a single proxy endpoint.
+
+**Is there a free plan to get started with CollieAi?** Yes. Every new CollieAi account starts on the Free plan with 20,000 API calls per month and full access to every security feature. The Growth plan is $49/month — an AI firewall for well under the $500/month many teams budget.
+
+**Is my provider API key secure with CollieAi?** Yes. CollieAi stores your provider token AES-encrypted at rest and never exposes it in logs or responses. CollieAi uses the token only to forward your filtered requests to the provider.
