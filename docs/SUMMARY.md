@@ -56,7 +56,7 @@
 
 ## Monitoring
 
-* [Overview](monitoring/overview.md)
+* [Monitoring overview](monitoring/overview.md)
 * [Logs](monitoring/logs.md)
 * [Analytics](monitoring/analytics.md)
 * [Alerts](monitoring/alerts.md)
@@ -69,7 +69,7 @@
 
 ## Self Hosting
 
-* [Overview](self-hosting/overview.md)
+* [Self-hosting overview](self-hosting/overview.md)
 * [Local development](self-hosting/local-development.md)
 
 ## API Reference

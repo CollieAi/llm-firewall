@@ -1,26 +1,39 @@
 ---
+description: >-
+  How CollieAi provider tokens work — store your OpenAI, Anthropic, Azure
+  OpenAI, or Google Gemini API keys, encrypted at rest, so your app only needs a
+  CollieAi key to reach the upstream model.
 icon: square-binary
 ---
 
 # Provider tokens
 
-Provider tokens are the API keys for your LLM provider -- OpenAI, Azure OpenAI, or Google Gemini. CollieAI stores these tokens and uses them when proxying requests to the upstream model, so your application only needs a CollieAI API key.
+Provider tokens are the API keys for your LLM provider — OpenAI, Anthropic, Azure OpenAI, or Google Gemini. CollieAi stores these tokens and uses them when proxying requests to the upstream model, so your application only needs a CollieAi API key.
+
+{% hint style="info" %}
+**Key points**
+
+* Provider tokens are your upstream LLM API keys (OpenAI, Anthropic, Azure OpenAI, Google Gemini) stored in CollieAi.
+* They are user-scoped, so you configure a key once and all your projects use it via your default token.
+* Tokens are encrypted at rest with Fernet (AES-128-CBC + HMAC-SHA256) when an encryption key is configured.
+* Your application only needs a `clai_` CollieAi key — it never handles the raw provider key.
+{% endhint %}
 
 ## How they work
 
-When a request arrives at the CollieAI proxy:
+When a request arrives at the CollieAi proxy:
 
-1. CollieAI authenticates the request using the `clai_` API key.
+1. CollieAi authenticates the request using the `clai_` API key.
 2. Input security rules are applied.
 3. The (possibly modified) message is forwarded to the LLM provider using your stored provider token.
 4. Output security rules are applied to the response.
 5. The filtered response is returned to your application.
 
-Your application never needs direct access to the provider's API key -- it only needs the CollieAI API key.
+Your application never needs direct access to the provider's API key -- it only needs the CollieAi API key.
 
 ## User-scoped, not per-project
 
-Provider tokens are **user-scoped**. They belong to your account and are available across all of your projects. When CollieAI proxies a request, it uses your **default token** for the relevant provider, regardless of which project the request belongs to.
+Provider tokens are **user-scoped**. They belong to your account and are available across all of your projects. When CollieAi proxies a request, it uses your **default token** for the relevant provider, regardless of which project the request belongs to.
 
 This means:
 
@@ -48,7 +61,7 @@ Marking a new token as default automatically un-defaults the previous one for th
 
 ## Encryption at rest
 
-When the `PROVIDER_TOKEN_ENCRYPTION_KEY` environment variable is set, CollieAI encrypts all stored provider tokens using **Fernet** (AES-128-CBC + HMAC-SHA256). This ensures that tokens are encrypted at rest in the database and can only be decrypted by the running application with the correct key.
+When the `PROVIDER_TOKEN_ENCRYPTION_KEY` environment variable is set, CollieAi encrypts all stored provider tokens using **Fernet** (AES-128-CBC + HMAC-SHA256). This ensures that tokens are encrypted at rest in the database and can only be decrypted by the running application with the correct key.
 
 | Configuration                              | Behavior                                                             |
 | ------------------------------------------ | -------------------------------------------------------------------- |
@@ -56,16 +69,17 @@ When the `PROVIDER_TOKEN_ENCRYPTION_KEY` environment variable is set, CollieAI e
 | `PROVIDER_TOKEN_ENCRYPTION_KEY` is not set | Tokens are stored in plaintext. Suitable for local development only. |
 
 {% hint style="info" %}
-**Recommendation:** Always set `PROVIDER_TOKEN_ENCRYPTION_KEY` in production environments. See [Self-Hosting](/broken/pages/5c0c000f83284fd0ba601e9b3f9c415798dc033c) for configuration details.
+**Recommendation:** Always set `PROVIDER_TOKEN_ENCRYPTION_KEY` in production environments. See [Self-Hosting](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/self-hosting) for configuration details.
 {% endhint %}
 
 ## Supported providers
 
-| Provider      | Value    | Notes                               |
-| ------------- | -------- | ----------------------------------- |
-| OpenAI        | `openai` | Standard OpenAI API keys (`sk-...`) |
-| Azure OpenAI  | `azure`  | Azure-specific endpoint and key     |
-| Google Gemini | `gemini` | Google AI API keys                  |
+| Provider      | Value       | Notes                                   |
+| ------------- | ----------- | --------------------------------------- |
+| OpenAI        | `openai`    | Standard OpenAI API keys (`sk-...`)     |
+| Anthropic     | `anthropic` | Claude Messages API keys (`sk-ant-...`) |
+| Azure OpenAI  | `azure`     | Azure-specific endpoint and key         |
+| Google Gemini | `gemini`    | Google AI API keys                      |
 
 ## API reference
 
@@ -139,11 +153,17 @@ curl -X DELETE https://app.collieai.io/api/v1/tokens/{token_id} \
 | **Rotate tokens regularly**            | Update your provider keys periodically. Use the PATCH endpoint to swap in a new key without downtime.                                                                       |
 | **Use descriptive names**              | Name tokens by purpose and environment (e.g., `openai-production`, `azure-staging`) so you can identify them at a glance.                                                   |
 | **Use separate keys for dev and prod** | Create distinct provider tokens for development and production environments. This isolates billing and makes it easier to rotate keys without affecting production traffic. |
-| **Avoid sharing provider keys**        | Each CollieAI user should have their own provider tokens. Do not share raw provider API keys between users.                                                                 |
-| **Monitor usage**                      | Check your provider's billing dashboard to ensure tokens are only used through CollieAI as expected.                                                                        |
+| **Avoid sharing provider keys**        | Each CollieAi user should have their own provider tokens. Do not share raw provider API keys between users.                                                                 |
+| **Monitor usage**                      | Check your provider's billing dashboard to ensure tokens are only used through CollieAi as expected.                                                                        |
 
 ## Next steps
 
 * [Projects](projects.md) -- the environments that use provider tokens for proxying.
-* [Proxy Integration](/broken/pages/EFXeLTHVDQLFgK0Iy51O) -- how requests flow through CollieAI to the LLM.
-* [Self-Hosting](/broken/pages/h8JdUjNdxYdOBW2D2glU) -- configure encryption and other production settings.
+* [Proxy Integration](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/proxy-integration) -- how requests flow through CollieAi to the LLM.
+* [Self-Hosting](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/self-hosting) -- configure encryption and other production settings.
+
+### Frequently asked questions
+
+**Which LLM providers can I connect to CollieAi?** You can store provider tokens for OpenAI, Anthropic (Claude), Azure OpenAI, and Google Gemini. CollieAi uses your default token for each provider when proxying requests, so your application only needs a CollieAi API key.
+
+**Are my provider API keys stored securely in CollieAi?** Yes. When an encryption key is configured, CollieAi encrypts provider tokens at rest with Fernet (AES-128-CBC + HMAC-SHA256), masks them in API responses (last 4 characters only), and never exposes them to your application.

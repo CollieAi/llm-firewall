@@ -1,10 +1,23 @@
 ---
+description: >-
+  How CollieAi dictionaries work — reusable word lists for Dictionary Match
+  rules, with system groups across 23 languages, custom uploads, and automatic
+  word extraction from code and schemas.
 icon: spell-check
 ---
 
 # Dictionaries
 
-Dictionaries are word lists used by [Dictionary Match](../security-rules/detecting-pii/dictionary-matching.md) rules. They power CollieAI's multi-pattern matching — load a list of terms once, and every message is scanned for all of them in a single pass.
+Dictionaries are word lists used by [Dictionary Match](../security-rules/detecting-pii/dictionary-matching.md) rules. They power CollieAi's multi-pattern matching — load a list of terms once, and every message is scanned for all of them in a single pass.
+
+{% hint style="info" %}
+**Key points**
+
+* Dictionaries are reusable word lists that power CollieAi's Dictionary Match (Aho-Corasick) rules.
+* CollieAi ships 4 system groups across 23 languages (Content Safety and Prompt Security, each ordered and unordered).
+* You can upload custom dictionaries (up to 5 MB) or auto-extract domain terms from SQL schemas and code.
+* Reference a single dictionary by ID or a group with language selection when configuring a rule.
+{% endhint %}
 
 ***
 
@@ -12,7 +25,7 @@ Dictionaries are word lists used by [Dictionary Match](../security-rules/detecti
 
 Dictionaries are organized into **groups**. A group represents a broad protection category with one dictionary per supported language.
 
-CollieAI ships with **4 system groups** covering 23 languages:
+CollieAi ships with **4 system groups** covering 23 languages:
 
 | Group                           | Match Mode | Description                                                                                                                                        |
 | ------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,7 +46,7 @@ curl https://app.collieai.io/api/v1/dictionary-groups \
 
 ## System dictionaries
 
-CollieAI also includes **legacy standalone system dictionaries** for backward compatibility:
+CollieAi also includes **legacy standalone system dictionaries** for backward compatibility:
 
 | Dictionary           | Description                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -300,3 +313,9 @@ See [Dictionary Matching](../security-rules/detecting-pii/dictionary-matching.md
 * [Dictionary Matching](../security-rules/detecting-pii/dictionary-matching.md) -- configure rules that use dictionaries.
 * [Policies](policies.md) -- organize rules into policies.
 * [Projects](projects.md) -- assign policies to projects.
+
+### Frequently asked questions
+
+**What are dictionaries in CollieAi?** Dictionaries in CollieAi are reusable word lists used by Dictionary Match rules to scan every message for many terms in a single pass — for profanity, PII keywords, prompt injection phrases, or your own custom terms.
+
+**Can I build a dictionary from my own data?** Yes. You can upload a custom dictionary (up to 5 MB) or have CollieAi automatically extract domain-specific terms from SQL schemas, code, and config files, filtering out common words and keywords.

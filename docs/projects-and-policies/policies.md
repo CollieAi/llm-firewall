@@ -1,10 +1,23 @@
 ---
+description: >-
+  How CollieAi policies work — a reusable collection of security rules with an
+  enforce or monitor mode that you can share across multiple projects and switch
+  instantly.
 icon: building-shield
 ---
 
 # Policies
 
-A policy is a named collection of [security rules](/broken/pages/37642cdfbbc2cf0cd7004156f9cba97543d0e70b). Policies are the central organizing unit in CollieAI — they define what to filter, how to filter it, and whether to enforce or monitor.
+A policy is a named collection of [security rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules). Policies are the central organizing unit in CollieAi — they define what to filter, how to filter it, and whether to enforce or monitor.
+
+{% hint style="info" %}
+**Key points**
+
+* A policy is a reusable collection of security rules — it defines what to filter, how, and whether to enforce or monitor.
+* Policies are independent from projects and user-scoped: build one once and assign it to many projects.
+* Each policy has an enforcement mode (`enforce` or `monitor`), which individual rules can override.
+* Switching a project's active policy takes effect instantly, and you can't delete a policy that's active on a project.
+{% endhint %}
 
 ## Independence from projects
 
@@ -69,7 +82,7 @@ Every policy has an **enforcement mode** that controls whether its rules have re
 | `enforce` (default) | Rules apply their configured decisions — blocking, masking, or allowing messages.               |
 | `monitor`           | Rules evaluate and log matches, but decisions are suppressed. Traffic passes through unchanged. |
 
-Individual rules can override the policy-level mode. See [Enforcement Mode](/broken/pages/a10ddbf0e3c0cca43c3fd91d92be4d641ca3fc28) for the full precedence table and workflow guidance.
+Individual rules can override the policy-level mode. See [Enforcement Mode](../security-rules/enforcement-mode.md) for the full precedence table and workflow guidance.
 
 ```bash
 # Create a policy in monitor mode for safe testing
@@ -84,7 +97,7 @@ curl -X POST https://app.collieai.io/api/v1/policies \
 
 ## Active policy assignment
 
-A [project](/broken/pages/a4f89538e327a87ed6f9e6dfd0b4b7ac4303058c) has exactly one active policy at a time. Switching the active policy changes which rules apply to all subsequent requests.
+A [project](projects.md) has exactly one active policy at a time. Switching the active policy changes which rules apply to all subsequent requests.
 
 One shared policy can be active on **multiple projects** simultaneously. Changes to the policy's rules take effect across all projects that use it.
 
@@ -234,7 +247,13 @@ New projects automatically get `pii-masking-standard` (the default). High-securi
 
 ## Next steps
 
-* [Security Rules](/broken/pages/IFQLAOgCVBuArNftVIWh) — learn about the 9 rule types you can add to a policy.
+* [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) — learn about the 9 rule types you can add to a policy.
 * [Enforcement Mode](../security-rules/enforcement-mode.md) — monitor vs. enforce and the precedence table.
 * [Projects](projects.md) — manage the environments that use your policies.
 * [Dictionaries](dictionaries.md) — word lists used by dictionary matching rules.
+
+### Frequently asked questions
+
+**What is a policy in CollieAi?** A policy in CollieAi is a named, reusable collection of security rules with an enforce or monitor mode. It defines what content to filter and how, and a single policy can be the active policy on multiple projects at once.
+
+**Can I reuse the same security rules across projects?** Yes. Policies are shared by default and independent from projects, so you can define rules once in a policy and assign it as the active policy on every project that needs the same protection.

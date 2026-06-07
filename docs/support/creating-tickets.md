@@ -1,4 +1,12 @@
-# Creating Tickets
+---
+description: >-
+  How to create and reply to a CollieAi support ticket — submit a subject and
+  message, attach screenshots, and track replies through the dashboard and email
+  notifications.
+icon: messages
+---
+
+# Creating tickets
 
 ## Creating a New Ticket
 
@@ -6,11 +14,11 @@
 2. Click **New Ticket** in the top-right corner.
 3. Fill in the form:
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| **Subject** | Yes | A brief summary of the issue (max 255 characters) |
-| **Message** | Yes | Detailed description of the problem (max 5,000 characters) |
-| **Attachments** | No | Up to 3 screenshots per message |
+| Field           | Required | Description                                                |
+| --------------- | -------- | ---------------------------------------------------------- |
+| **Subject**     | Yes      | A brief summary of the issue (max 255 characters)          |
+| **Message**     | Yes      | Detailed description of the problem (max 5,000 characters) |
+| **Attachments** | No       | Up to 3 screenshots per message                            |
 
 4. Click **Create Ticket**.
 
@@ -23,8 +31,9 @@ You can attach images to help illustrate your issue. Click **Attach screenshot**
 **Allowed formats:** PNG, JPG, JPEG, WebP
 
 **Limits:**
-- Maximum **5 MB** per file
-- Maximum **3 attachments** per message
+
+* Maximum **5 MB** per file
+* Maximum **3 attachments** per message
 
 Attachments appear as thumbnails in the message thread. Click a thumbnail to open the full-size image in a new tab.
 
@@ -41,17 +50,17 @@ You can add replies to any ticket that is not **Closed**.
 
 The **Support** page shows all your tickets in the left panel, sorted by most recently updated. Each ticket displays:
 
-- Subject
-- Current status
-- Time since last update
-- Total message count
+* Subject
+* Current status
+* Time since last update
+* Total message count
 
 Click a ticket to view the full conversation thread on the right.
 
 ## Email Notifications
 
-- **When you create a ticket** -- the support team receives an email at the support inbox.
-- **When you add a reply** -- the support team is notified of the new message.
-- **When the team replies** -- you receive an email with the response and a link to view the ticket in the dashboard.
+* **When you create a ticket** -- the support team receives an email at the support inbox.
+* **When you add a reply** -- the support team is notified of the new message.
+* **When the team replies** -- you receive an email with the response and a link to view the ticket in the dashboard.
 
 Emails are notifications only -- all replies must be made through the dashboard.

@@ -1,10 +1,23 @@
 ---
+description: >-
+  How to self-host CollieAi — run the AI firewall on your own infrastructure for
+  full data control,   with FastAPI, PostgreSQL, ClickHouse, and Redis, and
+  billing disabled by default.
 icon: server
 ---
 
-# Overview
+# Self-hosting overview
 
-CollieAI can be self-hosted for full control over your data and infrastructure. This section covers everything you need to deploy and run the platform on your own servers.
+CollieAi can be self-hosted for full control over your data and infrastructure. You can run the entire AI firewall on your own servers — on-premise or in your own cloud — and this section covers everything you need to deploy it.
+
+{% hint style="info" %}
+**Key points**
+
+* CollieAi can be self-hosted on your own infrastructure for full control over data and deployment.
+* It runs as five components: a FastAPI API server, PostgreSQL, ClickHouse, Redis, and a background worker.
+* Optional ML models (prompt injection, LLM detection, language detection) auto-download from HuggingFace on first startup.
+* Self-hosted billing is disabled by default, so there are no usage limits on API calls, prompt size, or projects.
+{% endhint %}
 
 ## System Requirements
 
@@ -60,7 +73,7 @@ The API server handles all HTTP traffic: proxy requests, REST endpoints, and the
 
 ## ML Models
 
-CollieAI uses optional machine learning models for advanced security rules:
+CollieAi uses optional machine learning models for advanced security rules:
 
 | Model                       | Purpose                                            | Notes                                                                                                                                                                                            |
 | --------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -70,7 +83,7 @@ CollieAI uses optional machine learning models for advanced security rules:
 
 Models are **auto-downloaded from HuggingFace** on first startup when `PRELOAD_MODELS=true`. A valid `HF_TOKEN` is required for gated models. Set `PRELOAD_MODELS=false` to skip model loading for faster startup during development (rules that depend on ML models will silently fail open).
 
-## Billing
+## How does billing work when self-hosting?
 
 When self-hosting, subscription billing is **disabled by default**. The environment variable `BILLING_ENABLED` defaults to `false`, which means:
 
@@ -97,4 +110,12 @@ See [Plans & Billing](../getting-started/plans-and-billing.md) for details on pl
 
 ## Next Steps
 
-* [**Local Development**](local-development.md) -- step-by-step guide to running CollieAI on your machine.
+* [**Local Development**](local-development.md) -- step-by-step guide to running CollieAi on your machine.
+
+### Frequently asked questions
+
+**Can I self-host CollieAi?** Yes. CollieAi can be self-hosted on your own servers, on-premise or in your own cloud, giving you full control over your data and infrastructure. It runs with FastAPI, PostgreSQL, ClickHouse, and Redis via Docker Compose.
+
+**Does self-hosting CollieAi have usage limits?** No. When self-hosted, billing is disabled by default (`BILLING_ENABLED=false`), so API calls, prompt size, and project count are all unlimited, with no Stripe integration or billing UI.
+
+**What do I need to run CollieAi on my own infrastructure?** You need Python 3.11+, Docker and Docker Compose, and Git. Optional ML models for prompt injection, LLM detection, and language detection auto-download from HuggingFace on first startup.

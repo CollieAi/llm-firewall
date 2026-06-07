@@ -1,4 +1,8 @@
 ---
+description: >-
+  How CollieAi data retention works — set per-project body and log retention to
+  balance confidentiality with the audit trail needed for GDPR, PCI, and
+  compliance.
 icon: input-numeric
 ---
 
@@ -13,7 +17,16 @@ Each project controls how long its log data lives in CollieAI. Two settings, two
 
 The split is intentional: bodies are **evidence** for active investigation (false positives, prompt-injection attempts, debugging); metadata is the **audit trail**. They have very different sensitivity profiles, so they get different lifecycles.
 
-## Why two knobs
+{% hint style="info" %}
+**Key points**
+
+* Each CollieAi project sets its own data retention, with two independent lifecycles.
+* `body_retention_hours` (default 48) controls how long request and response bodies are kept; `log_retention_days` (default 90) controls the metadata audit trail.
+* Short body retention protects confidentiality while long metadata retention supports compliance — set `body_retention_hours = 0` to never persist bodies.
+* The invariant `body_retention_hours ≤ log_retention_days × 24` is enforced, and changes apply to new logs only.
+{% endhint %}
+
+## Why does CollieAi split body and log retention?
 
 Storing every body for 90 days is the worst case for confidentiality — bodies can contain the very secrets a security rule was hired to redact. Conversely, deleting metadata after 48 hours destroys the audit trail you need for compliance.
 
@@ -83,3 +96,9 @@ To extend the grace window (or shorten it) before applying the migration, edit s
 * [Projects](projects.md) — project settings overview
 * [Logs](../monitoring/logs.md) — how the logs UI uses retention info
 * [Projects API](../api-reference/projects.md) — full schema reference
+
+### Frequently asked questions
+
+**Can I control how long CollieAi stores my data?** Yes. Each project sets `body_retention_hours` for request and response bodies and `log_retention_days` for metadata, so you can keep bodies briefly for confidentiality while retaining the audit trail as long as compliance requires.
+
+**Can CollieAi avoid storing request bodies for sensitive workloads?** Yes. Set `body_retention_hours = 0` and bodies are never persisted — the next storage merge nulls them within seconds, which suits high-sensitivity or strictly regulated tenants.

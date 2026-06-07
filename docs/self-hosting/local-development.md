@@ -1,10 +1,14 @@
 ---
+description: >-
+  How to run CollieAi locally for development — set up Python, Docker
+  (PostgreSQL, Redis, ClickHouse), environment variables, migrations, the API
+  server, and the background worker.
 icon: nas
 ---
 
 # Local development
 
-This guide walks you through running CollieAI locally for development purposes.
+This guide walks you through running CollieAi locally for development purposes.
 
 ## Prerequisites
 
@@ -325,10 +329,10 @@ docker compose exec clickhouse clickhouse-client --user collieai --password coll
 
 The background worker supports the following environment variables:
 
-| Variable                     | Default | Description                                                                                                                                                              |
-| ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `WORKER_CONCURRENCY`         | `10`    | Number of consumer coroutines per worker process. Each one races on all four queues (input / output / playground filtering + delivery) via multi-key BRPOP.          |
-| `WORKER_QUEUE_POLL_INTERVAL` | `0.1`   | Queue polling interval in seconds.                                                                                                                                       |
+| Variable                     | Default | Description                                                                                                                                                                 |
+| ---------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WORKER_CONCURRENCY`         | `10`    | Number of consumer coroutines per worker process. Each one races on all four queues (input / output / playground filtering + delivery) via multi-key BRPOP.                 |
+| `WORKER_QUEUE_POLL_INTERVAL` | `0.1`   | Queue polling interval in seconds.                                                                                                                                          |
 | `REDIS_POOL_SIZE`            | `40`    | Hard cap on Redis connections per worker process. **Must satisfy** `REDIS_POOL_SIZE >= WORKER_CONCURRENCY + 20` — the worker refuses to boot otherwise. Bump both together. |
 
 Add these to your `.env` file or export them in the worker terminal before starting.
