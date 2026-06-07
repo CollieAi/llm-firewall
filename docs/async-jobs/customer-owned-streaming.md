@@ -1,4 +1,8 @@
 ---
+description: >-
+  How to filter streaming output from your own LLM with CollieAi — push chunks
+  to a job for real-time guardrails on self-hosted, open-source, or
+  multi-provider models.
 icon: signal-stream
 ---
 
@@ -6,16 +10,16 @@ icon: signal-stream
 
 When you call your own LLM (a model you host, a non-OpenAI provider, or an OpenAI call you make directly without going through CollieAi as a proxy), you can still get streaming output filtering by **pushing chunks** into a job as they arrive from the upstream model. CollieAi filters each chunk through the project's policy and either returns the safe text inline or publishes it on a Server-Sent Events stream you can connect to from a browser.
 
-This is the pattern to use when **the [drop-in proxy](../proxy-integration/streaming.md) doesn't fit** — typically because you're not on OpenAI/Anthropic, or you need control over the upstream call that the proxy doesn't expose.
+This is the pattern to use when **the** [**drop-in proxy**](../proxy-integration/streaming.md) **doesn't fit** — typically because you're not on OpenAI/Anthropic, or you need control over the upstream call that the proxy doesn't expose.
 
-## When to use this
+## When should you use customer-owned streaming?
 
-| Scenario | What to use |
-|---|---|
-| You're calling OpenAI or an OpenAI-compatible API and want filtered streaming | [Drop-in proxy streaming](../proxy-integration/streaming.md) — set `stream: true`, you're done |
-| You're calling Anthropic directly and want filtered streaming | [Drop-in proxy streaming](../proxy-integration/streaming.md) — works for `/v1/messages` too |
-| You're calling **any other model** (open-source, self-hosted, multi-provider router) and want filtered streaming | **This page** — push chunks to `POST /v1/jobs/{id}/chunks` |
-| You want filtering but no streaming | [Creating jobs](creating-jobs.md) (legacy `message` / `message_output` flow) |
+| Scenario                                                                                                         | What to use                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| You're calling OpenAI or an OpenAI-compatible API and want filtered streaming                                    | [Drop-in proxy streaming](../proxy-integration/streaming.md) — set `stream: true`, you're done |
+| You're calling Anthropic directly and want filtered streaming                                                    | [Drop-in proxy streaming](../proxy-integration/streaming.md) — works for `/v1/messages` too    |
+| You're calling **any other model** (open-source, self-hosted, multi-provider router) and want filtered streaming | **This page** — push chunks to `POST /v1/jobs/{id}/chunks`                                     |
+| You want filtering but no streaming                                                                              | [Creating jobs](creating-jobs.md) (legacy `message` / `message_output` flow)                   |
 
 ## Architecture
 
@@ -164,8 +168,8 @@ Re-submitting the same sequence with a **different body** is a contract violatio
 
 A session is terminal when:
 
-- You submit a chunk with `is_final=true` and the response comes back with `finished=true`.
-- A rule fires a block on any chunk. The response has an emit with `blocked=true` and `finished=true`.
+* You submit a chunk with `is_final=true` and the response comes back with `finished=true`.
+* A rule fires a block on any chunk. The response has an emit with `blocked=true` and `finished=true`.
 
 Once terminal, subsequent submits return `409 chunk_session_finished` — create a new job to start a new stream. The terminal state is also published as the SSE `end` event with `reason: final` (`is_final` flush), `reason: blocked` (rule block), or `reason: session_unrecoverable` (a rare commit failure that can't be repaired by retry).
 
@@ -173,15 +177,15 @@ Once terminal, subsequent submits return `409 chunk_session_finished` — create
 
 The error envelope is the same OpenAI-compatible shape used elsewhere: `{"error": {"message", "type", "code"}}`. The full list lives in the [`POST /chunks` API reference](../api-reference/jobs.md#post-v1jobsjob_idchunks). The codes you'll handle most often:
 
-| Code                              | What to do                                                                                                                                              |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chunk_sequence_conflict`         | Re-sync to the `expected_sequence` field in the error body.                                                                                              |
-| `chunk_filter_timeout` (`504`)    | Retry the SAME sequence with backoff. The chunk wasn't accepted; retries are safe via idempotency.                                                       |
-| `chunk_concurrent_submit`         | Another submit is in flight. Serialize submissions per job_id.                                                                                          |
-| `chunk_session_finished`          | The session is over (final or block). Stop submitting; this job is done.                                                                                |
-| `chunk_streaming_unsupported`     | The project's policy can't stream (e.g. has an LLM-detection rule). Use the [synchronous `/response` endpoint](../api-reference/jobs.md#post-v1jobsjob_idresponse) instead, or split the policy. |
-| `chunk_session_unrecoverable`     | A prior commit failure left the stream in an unrepairable state (very rare). Create a new job.                                                          |
-| `chunk_idempotency_conflict`      | You re-submitted a sequence with a different body. Use a new sequence number for new content.                                                            |
+| Code                           | What to do                                                                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `chunk_sequence_conflict`      | Re-sync to the `expected_sequence` field in the error body.                                                                                                                                      |
+| `chunk_filter_timeout` (`504`) | Retry the SAME sequence with backoff. The chunk wasn't accepted; retries are safe via idempotency.                                                                                               |
+| `chunk_concurrent_submit`      | Another submit is in flight. Serialize submissions per job\_id.                                                                                                                                  |
+| `chunk_session_finished`       | The session is over (final or block). Stop submitting; this job is done.                                                                                                                         |
+| `chunk_streaming_unsupported`  | The project's policy can't stream (e.g. has an LLM-detection rule). Use the [synchronous `/response` endpoint](../api-reference/jobs.md#post-v1jobsjob_idresponse) instead, or split the policy. |
+| `chunk_session_unrecoverable`  | A prior commit failure left the stream in an unrepairable state (very rare). Create a new job.                                                                                                   |
+| `chunk_idempotency_conflict`   | You re-submitted a sequence with a different body. Use a new sequence number for new content.                                                                                                    |
 
 ## SSE consumer semantics
 
@@ -200,25 +204,31 @@ Periodic `: keepalive\n\n` comments are sent when no new emits arrive; treat the
 
 ## Limits
 
-- **Per-chunk filter budget**: 2 seconds by default. Exceeding returns `504 chunk_filter_timeout`; retry with backoff.
-- **Per-chunk content size**: 64 KB. Larger chunks should be split client-side.
-- **Concurrent submits per job**: 1. Submissions must be serial.
-- **Job state TTL**: 1 hour after the last activity. Long-running streams that idle past the TTL need a fresh job.
-- **Stream retention**: 10,000 emits per job. Real-time consumers don't hit this; consumers that catch up from history may, in which case earlier emits are no longer replayable.
+* **Per-chunk filter budget**: 2 seconds by default. Exceeding returns `504 chunk_filter_timeout`; retry with backoff.
+* **Per-chunk content size**: 64 KB. Larger chunks should be split client-side.
+* **Concurrent submits per job**: 1. Submissions must be serial.
+* **Job state TTL**: 1 hour after the last activity. Long-running streams that idle past the TTL need a fresh job.
+* **Stream retention**: 10,000 emits per job. Real-time consumers don't hit this; consumers that catch up from history may, in which case earlier emits are no longer replayable.
 
 ## Compared to the drop-in proxy
 
-| Aspect                    | Drop-in proxy streaming                                  | Chunk ingestion (this page)                              |
-| ------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
-| Who calls the LLM         | CollieAi (you point your SDK at `app.collieai.io`)       | You (CollieAi never sees your provider credentials)      |
-| Models supported          | OpenAI-compatible, Anthropic                             | Any model — you do the inference                          |
-| Streaming format          | Native OpenAI / Anthropic SSE on the proxy response       | CollieAi-shaped SSE on `/v1/jobs/{id}/stream`             |
-| Filter timing             | Per-token, transparent                                   | Per-submitted-chunk; you control batching                 |
-| Mid-stream block UX       | Provider's native error event                            | `blocked: true` emit + `reason: blocked` SSE end          |
-| Best for                  | Drop-in replacement for OpenAI/Anthropic                  | Multi-provider stacks, self-hosted models, custom routers |
+| Aspect              | Drop-in proxy streaming                             | Chunk ingestion (this page)                               |
+| ------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| Who calls the LLM   | CollieAi (you point your SDK at `app.collieai.io`)  | You (CollieAi never sees your provider credentials)       |
+| Models supported    | OpenAI-compatible, Anthropic                        | Any model — you do the inference                          |
+| Streaming format    | Native OpenAI / Anthropic SSE on the proxy response | CollieAi-shaped SSE on `/v1/jobs/{id}/stream`             |
+| Filter timing       | Per-token, transparent                              | Per-submitted-chunk; you control batching                 |
+| Mid-stream block UX | Provider's native error event                       | `blocked: true` emit + `reason: blocked` SSE end          |
+| Best for            | Drop-in replacement for OpenAI/Anthropic            | Multi-provider stacks, self-hosted models, custom routers |
 
 ## Next steps
 
 * [`POST /v1/jobs/{id}/chunks` API reference](../api-reference/jobs.md#post-v1jobsjob_idchunks) — full request/response/error shapes
 * [`GET /v1/jobs/{id}/stream` API reference](../api-reference/jobs.md#get-v1jobsjob_idstream) — SSE event format and resume semantics
 * [Webhooks](webhooks.md) — terminal-state durable notifications for the webhook async-job flow (chunk-ingestion sessions terminate via `finished: true` on the chunk response and `event: end` on the SSE stream instead)
+
+### Frequently asked questions
+
+**Can I filter streaming output from a self-hosted or custom model?** Yes. CollieAi's customer-owned streaming lets you push your model's output chunks to a job and receive real-time, rule-filtered text back — for self-hosted, open-source, or multi-provider models that don't go through the drop-in proxy.
+
+**How is customer-owned streaming different from the drop-in proxy?** With the drop-in proxy, CollieAi calls the LLM for you and streams the filtered response. With customer-owned streaming, you call your own model and push chunks to CollieAi for filtering, so CollieAi never sees your provider credentials.

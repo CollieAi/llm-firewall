@@ -1,19 +1,26 @@
+---
+description: >-
+  How CollieAi Async Job webhooks work — event types, payload format,
+  HMAC-SHA256   signature verification, replay protection, and retry behavior.
+icon: webhook
+---
+
 # Webhooks
 
-CollieAI delivers filtering results to your application via webhooks. Each webhook is an HTTP POST request to the `webhook_url` you specified when [creating the job](creating-jobs.md).
+CollieAi delivers filtering results to your application via webhooks. Each webhook is an HTTP POST request to the `webhook_url` you specified when [creating the job](creating-jobs.md).
 
----
+***
 
 ## Webhook Events
 
-| Event | Description |
-|-------|-------------|
-| `job.inbound_complete` | Input filtering finished. The filtered content is in `data.filtered`. |
-| `job.inbound_blocked` | Input content was blocked by a policy rule. |
+| Event                   | Description                                                             |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `job.inbound_complete`  | Input filtering finished. The filtered content is in `data.filtered`.   |
+| `job.inbound_blocked`   | Input content was blocked by a policy rule.                             |
 | `job.outbound_complete` | Output filtering finished. The filtered response is in `data.filtered`. |
-| `job.outbound_blocked` | Output content was blocked by a policy rule. |
+| `job.outbound_blocked`  | Output content was blocked by a policy rule.                            |
 
----
+***
 
 ## Payload Format
 
@@ -81,19 +88,19 @@ CollieAI delivers filtering results to your application via webhooks. Each webho
 }
 ```
 
----
+***
 
 ## Security Headers
 
 Every webhook request includes the following headers:
 
-| Header | Description |
-|--------|-------------|
-| `X-CollieAI-Signature` | HMAC-SHA256 signature of the payload |
+| Header                 | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `X-CollieAI-Signature` | HMAC-SHA256 signature of the payload               |
 | `X-CollieAI-Timestamp` | Unix timestamp (seconds) when the webhook was sent |
-| `X-CollieAI-Job-Id` | The job ID this webhook belongs to |
+| `X-CollieAI-Job-Id`    | The job ID this webhook belongs to                 |
 
----
+***
 
 ## Signature Verification
 
@@ -166,40 +173,40 @@ function verifySignature(payload, signature, timestamp, secret, toleranceSeconds
 }
 ```
 
----
+***
 
 ## Replay Protection
 
 CollieAI includes a Unix timestamp in the `X-CollieAI-Timestamp` header. Reject any webhook where the timestamp is more than **5 minutes** from your server's current time. This prevents replay attacks where an attacker resends a captured webhook payload. Always check the timestamp **before** computing the signature.
 
----
+***
 
 ## Retry Policy
 
 If your endpoint does not return an HTTP 2xx response, CollieAI retries the webhook with exponential backoff:
 
-| Attempt | Delay |
-|---------|-------|
-| 1st retry | 2 seconds |
-| 2nd retry | 4 seconds |
-| 3rd retry | 8 seconds |
+| Attempt   | Delay      |
+| --------- | ---------- |
+| 1st retry | 2 seconds  |
+| 2nd retry | 4 seconds  |
+| 3rd retry | 8 seconds  |
 | 4th retry | 16 seconds |
 | 5th retry | 32 seconds |
 
 After 5 failed retries, the job status moves to `failed`. You can check the job status via [polling](job-lifecycle.md#polling) if webhook delivery is unreliable.
 
----
+***
 
 ## Endpoint Requirements
 
 Your webhook endpoint must:
 
-- **Return HTTP 2xx** to acknowledge receipt. Any other status code triggers a retry.
-- **Respond within 30 seconds.** Requests that take longer are treated as failures.
-- **Be idempotent.** Due to retries, you may receive the same webhook more than once. Use the `job_id` and event type to deduplicate.
-- **Verify the signature.** Always validate `X-CollieAI-Signature` before processing the payload.
+* **Return HTTP 2xx** to acknowledge receipt. Any other status code triggers a retry.
+* **Respond within 30 seconds.** Requests that take longer are treated as failures.
+* **Be idempotent.** Due to retries, you may receive the same webhook more than once. Use the `job_id` and event type to deduplicate.
+* **Verify the signature.** Always validate `X-CollieAI-Signature` before processing the payload.
 
----
+***
 
 ## Full Webhook Handler Example
 
@@ -297,7 +304,7 @@ async def handle_webhook(request: Request):
     return {"status": "ok"}
 ```
 
----
+***
 
 ## Testing Webhooks
 
@@ -309,9 +316,9 @@ During development, use [webhook.site](https://webhook.site) to inspect webhook 
 
 For local development, tools like [ngrok](https://ngrok.com) can expose your local server to receive live webhooks.
 
----
+***
 
 ## Next Steps
 
-- [Job Lifecycle](job-lifecycle.md) -- understand status transitions and expiration behavior
-- [Creating Jobs](creating-jobs.md) -- endpoint reference and code examples
+* [Job Lifecycle](job-lifecycle.md) -- understand status transitions and expiration behavior
+* [Creating Jobs](creating-jobs.md) -- endpoint reference and code examples

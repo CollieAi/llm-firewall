@@ -1,4 +1,8 @@
 ---
+description: >-
+  The lifecycle of a CollieAi Async Job — every status from processing_inbound
+  to   completed, plus polling, expiration, and best practices for reliable
+  integrations.
 icon: arrows-repeat-1
 ---
 
@@ -49,17 +53,17 @@ In combined mode (both `message_input` and `message_output` provided), the job s
 
 ## All Statuses
 
-| Status                | Description                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Status                | Description                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `processing_inbound`  | Input content is being filtered against your rules.                                                            |
 | `inbound_blocked`     | Input content was blocked by a policy rule. **Terminal.**                                                      |
 | `awaiting_response`   | Input filtering is complete. Waiting for you to submit the LLM response via `POST /v1/jobs/{job_id}/response`. |
 | `processing_outbound` | Output content (LLM response) is being filtered.                                                               |
 | `outbound_blocked`    | Output content was blocked by a policy rule. **Terminal.**                                                     |
-| `delivering`          | Webhook delivery is in progress.                                                                                 |
-| `completed`           | All webhooks delivered successfully. **Terminal.**                                                               |
-| `failed`              | Webhook delivery failed after all retry attempts. **Terminal.**                                                  |
-| `expired`             | The job timed out before completing. **Terminal.**                                                               |
+| `delivering`          | Webhook delivery is in progress.                                                                               |
+| `completed`           | All webhooks delivered successfully. **Terminal.**                                                             |
+| `failed`              | Webhook delivery failed after all retry attempts. **Terminal.**                                                |
+| `expired`             | The job timed out before completing. **Terminal.**                                                             |
 
 ***
 
@@ -98,7 +102,7 @@ Jobs have a configurable time-to-live. If a job does not reach a terminal status
 | Default expiration | 1 hour (3,600 seconds)   |
 | Maximum expiration | 7 days (604,800 seconds) |
 
-Set a custom expiration when [creating the job](/broken/pages/c548a53e0fd1fb57f84d6df42235d3a0da3881f2):
+Set a custom expiration when [creating the job](creating-jobs.md):
 
 ```json
 {
@@ -135,7 +139,7 @@ This returns the current depth of processing queues, helping you detect backlogs
 {% step %}
 ### Store the webhook secret immediately
 
-The `webhook_secret` is returned only once, in the job creation response. Store it right away -- you need it to [verify every webhook](/broken/pages/aa060b7742db4c9ab1c629efbddc3a3db0916e4a#signature-verification) for that job.
+The `webhook_secret` is returned only once, in the job creation response. Store it right away -- you need it to [verify every webhook](webhooks.md) for that job.
 
 ```python
 job = await create_job(...)
@@ -146,7 +150,7 @@ await db.save_webhook_secret(job["job_id"], job["webhook_secret"])
 {% step %}
 ### Handle idempotency
 
-Due to [webhook retries](/broken/pages/aa060b7742db4c9ab1c629efbddc3a3db0916e4a#retry-policy), your endpoint may receive the same event more than once. Use the `job_id` and event type as a composite key to deduplicate:
+Due to [webhook retries](webhooks.md), your endpoint may receive the same event more than once. Use the `job_id` and event type as a composite key to deduplicate:
 
 ```python
 event_key = f"{payload['job_id']}:{payload['event']}"
@@ -185,5 +189,5 @@ Prefer `message_input` and `message_output` over the legacy `message` field. Col
 
 ## Next Steps
 
-* [Creating Jobs](/broken/pages/c548a53e0fd1fb57f84d6df42235d3a0da3881f2) -- endpoint reference and code examples
-* [Webhooks](/broken/pages/aa060b7742db4c9ab1c629efbddc3a3db0916e4a) -- payload format, signature verification, and retry policy
+* [Creating Jobs](creating-jobs.md) -- endpoint reference and code examples
+* [Webhooks](webhooks.md) -- payload format, signature verification, and retry policy

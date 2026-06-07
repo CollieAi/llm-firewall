@@ -1,10 +1,14 @@
 ---
+description: >-
+  How to create CollieAi Async Jobs — submit content to POST /v1/jobs for
+  asynchronous   input and output filtering, with results delivered to your
+  webhook.
 icon: diagram-successor
 ---
 
 # Creating jobs
 
-Submit content for asynchronous filtering by creating a job. CollieAI processes the content against your configured rules and delivers results to your webhook URL.
+Submit content for asynchronous filtering by creating a job. CollieAi processes the content against your configured rules and delivers results to your webhook URL.
 
 ## Create a Job
 
@@ -22,27 +26,27 @@ Authorization: Bearer clai_xxx
 
 ### Request Body
 
-| Field                | Type    | Required | Description                                                |
-| -------------------- | ------- | -------- | ---------------------------------------------------------- |
+| Field                | Type    | Required | Description                                              |
+| -------------------- | ------- | -------- | -------------------------------------------------------- |
 | `message`            | string  | No\*     | Content for input filtering (legacy mode)                |
 | `message_input`      | string  | No\*     | User message for input rules                             |
 | `message_output`     | string  | No\*     | AI response for output rules                             |
-| `webhook_url`        | string  | Yes      | HTTPS URL where filtered results are delivered             |
-| `metadata`           | object  | No       | Custom key-value pairs passed through to webhooks          |
-| `expires_in_seconds` | integer | No       | Job expiration time (default: 3600, max: 604800)           |
+| `webhook_url`        | string  | Yes      | HTTPS URL where filtered results are delivered           |
+| `metadata`           | object  | No       | Custom key-value pairs passed through to webhooks        |
+| `expires_in_seconds` | integer | No       | Job expiration time (default: 3600, max: 604800)         |
 | `inbound_only`       | boolean | No       | Mark job complete after input filtering (default: false) |
 
 \* At least one message field is required.
 
 ### Field Combination Behavior
 
-| Fields Provided                        | Input Filtering  | Output Filtering | Webhooks Delivered                     |
-| -------------------------------------- | ------------------ | ------------------ | -------------------------------------- |
-| `message`                              | Yes (legacy rules) | No                 | `job.inbound_complete`                 |
-| `message_input`                        | Yes                | No                 | `job.inbound_complete`                 |
-| `message_output`                       | No                 | Yes                | `job.outbound_complete`                |
-| `message_input` + `message_output`     | Yes                | Yes                | Both, in order                         |
-| `message_input` + `inbound_only: true` | Yes                | No                 | `job.inbound_complete` (job completes) |
+| Fields Provided                        | Input Filtering    | Output Filtering | Webhooks Delivered                     |
+| -------------------------------------- | ------------------ | ---------------- | -------------------------------------- |
+| `message`                              | Yes (legacy rules) | No               | `job.inbound_complete`                 |
+| `message_input`                        | Yes                | No               | `job.inbound_complete`                 |
+| `message_output`                       | No                 | Yes              | `job.outbound_complete`                |
+| `message_input` + `message_output`     | Yes                | Yes              | Both, in order                         |
+| `message_input` + `inbound_only: true` | Yes                | No               | `job.inbound_complete` (job completes) |
 
 ### Response
 
@@ -59,7 +63,7 @@ Authorization: Bearer clai_xxx
 ```
 
 {% hint style="warning" %}
-**Important:** Store the `webhook_secret` from the response. You need it to [verify webhook signatures](/broken/pages/aa060b7742db4c9ab1c629efbddc3a3db0916e4a#signature-verification). It is only returned once at job creation.
+**Important:** Store the `webhook_secret` from the response. You need it to [verify webhook signatures](webhooks.md). It is only returned once at job creation.
 {% endhint %}
 
 ***
@@ -189,7 +193,7 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
 }
 ```
 
-See [Job Lifecycle](/broken/pages/d578acc1c0d46e4c010641fc6e28fd9abc3c6019) for all possible status values.
+See [Job Lifecycle](job-lifecycle.md) for all possible status values.
 
 ***
 
@@ -219,7 +223,7 @@ curl -X POST https://app.collieai.io/v1/jobs/job_abc123def456/response \
 }
 ```
 
-CollieAI filters the response through your output rules and delivers the result via the `job.outbound_complete` webhook.
+CollieAi filters the response through your output rules and delivers the result via the `job.outbound_complete` webhook.
 
 {% hint style="info" %}
 **Note:** This endpoint is only available when the job status is `awaiting_response`. If the job was created with `inbound_only: true` or `message_output` was provided in the initial request, this endpoint returns an error.
@@ -261,5 +265,5 @@ curl "https://app.collieai.io/v1/jobs?page=1&page_size=20" \
 
 ## Next Steps
 
-* [Webhooks](/broken/pages/aa060b7742db4c9ab1c629efbddc3a3db0916e4a) -- understand the payload format and verify signatures
-* [Job Lifecycle](/broken/pages/d578acc1c0d46e4c010641fc6e28fd9abc3c6019) -- status transitions, expiration, and best practices
+* [Webhooks](webhooks.md) -- understand the payload format and verify signatures
+* [Job Lifecycle](job-lifecycle.md) -- status transitions, expiration, and best practices
