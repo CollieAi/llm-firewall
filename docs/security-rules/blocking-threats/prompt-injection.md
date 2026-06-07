@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi detects and blocks prompt injection and jailbreak attempts — fast
+  ML classifiers (Sentinel v2, DeBERTa, PromptGuard) with configurable
+  confidence thresholds.
+icon: syringe
+---
+
 # Prompt injection
 
-## Overview
+## What is prompt injection detection in CollieAi?
 
 The Lightweight Model rule type enables detection of **prompt injection** and **jailbreak attempts** using pre-trained ML classification models. The rule evaluates messages against the model and applies policy actions based on the classification result.
 
@@ -10,6 +18,15 @@ The Lightweight Model rule type enables detection of **prompt injection** and **
 * Blocking jailbreak attempts
 * Protecting LLM-based applications from adversarial inputs
 * Defense-in-depth alongside other rule types
+
+{% hint style="info" %}
+**Key points**
+
+* CollieAi detects prompt injection and jailbreak attempts with pre-trained ML classifiers (the `lightweight_model` rule type).
+* Inference is fast — 10–50 ms on CPU, 2–10 ms on GPU — for high-throughput, first-line defense.
+* Available models include Sentinel v2 (default), DeBERTa v3, and PromptGuard, each with a configurable confidence threshold (0.8 recommended).
+* A `min_length` setting and language-based routing reduce false positives, and long messages are scanned with overlapping windows.
+{% endhint %}
 
 ## Supported Models
 
@@ -545,11 +562,11 @@ Models are loaded at application startup when `PRELOAD_MODELS=true` (default).
 
 ### Memory Usage
 
-| Model              | RAM     | VRAM (GPU) |
-| ------------------ | ------- | ---------- |
-| Sentinel v2        | \~500MB | \~300MB    |
-| DeBERTa v3         | \~800MB | \~500MB    |
-| PromptGuard        | \~350MB | \~200MB    |
+| Model       | RAM     | VRAM (GPU) |
+| ----------- | ------- | ---------- |
+| Sentinel v2 | \~500MB | \~300MB    |
+| DeBERTa v3  | \~800MB | \~500MB    |
+| PromptGuard | \~350MB | \~200MB    |
 
 ### Latency
 
@@ -578,7 +595,7 @@ Order 40: aho_corasick       ← Dictionary matching
 
 ## Troubleshooting
 
-### Rule Not Blocking Attacks
+### Why isn't the rule blocking attacks?
 
 1. **Check labels\_to\_block** - Must match model's output labels exactly
    * Sentinel: `jailbreak` (not `JAILBREAK`)
@@ -588,20 +605,20 @@ Order 40: aho_corasick       ← Dictionary matching
 4. **Check direction** - Ensure it matches (**Input**, **Output**, or **All**)
 5. **Check rule order** - Another rule with lower order may be allowing first
 
-### Too Many False Positives
+### Why are there too many false positives?
 
 1. **Raise threshold** - Try 0.90 or 0.95
 2. **Add allow rules** - Whitelist specific patterns
 3. **Check language** - Models trained primarily on English
 
-### Model Not Loading
+### Why isn't the model loading?
 
 1. **Check logs** for errors
 2. **Verify model\_id** is in allowed list
 3. **Check disk space** (\~1GB needed for cache)
 4. **Check network** - Models download from HuggingFace
 
-### High Latency
+### Why is latency high?
 
 1. **First request** loads model - expect 60-80s delay
 2. **Enable preloading** - Set `PRELOAD_MODELS=true`
@@ -622,11 +639,19 @@ To add a new model, update these files:
 * Must have `id2label` mapping in config
 * Should be tested locally before production use
 
-***
-
 ## Security Considerations
 
 1. **Model allowlist** - Only approved models can be loaded
 2. **Input truncation** - Long inputs are windowed, not truncated silently
 3. **Fail-safe modes** - Configure `decision_on_error` based on requirements
 4. **Logging** - All matches are logged to ClickHouse for review
+
+### Frequently asked questions
+
+**How does CollieAi detect prompt injection?** CollieAi detects prompt injection with pre-trained ML classifiers that score each message for injection and jailbreak attempts and block it when the confidence passes your threshold (0.8 by default).
+
+**What is the best protection against prompt injection?** CollieAi recommends layering a fast ML classifier (the lightweight\_model rule) as a first line of defense with LLM-based detection for novel attacks, and placing both before text normalization so they evaluate the original input.
+
+**Can CollieAi detect jailbreak attempts?** Yes. CollieAi's prompt injection models (Sentinel v2, DeBERTa, PromptGuard) classify messages as jailbreak/injection or benign, and you choose which labels to block and at what confidence threshold.
+
+**How do I reduce false positives in prompt injection detection?** Raise the confidence threshold (for example 0.90–0.95), increase `min_length` to skip very short messages, add allow rules for known-safe patterns, or switch the decision from block to mask.

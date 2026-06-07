@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi structured-ID detection redacts PII — checksum-validated credit
+  cards (Luhn), IBANs (MOD-97), SWIFT/BIC, and national IDs, with far fewer
+  false positives than regex.
+icon: id-card
+---
+
 # Structured IDs
 
-## Overview
+## What is the structured ID rule type?
 
 The Structured ID Detection rule type enables detection and handling of structured identifiers such as credit cards, IBAN, SWIFT/BIC codes, and national IDs. Unlike simple regex patterns, this rule uses **checksum/format validation** to reduce false positives.
 
@@ -11,7 +19,16 @@ The Structured ID Detection rule type enables detection and handling of structur
 * SWIFT/BIC code detection
 * National ID number detection (tax IDs, social security numbers)
 
-## How It Works
+{% hint style="info" %}
+**Key points**
+
+* Structured-ID detection redacts identifiers like credit cards, IBANs, SWIFT/BIC codes, and national IDs.
+* It validates checksums (Luhn, MOD-97-10, ISO 7064), so it produces far fewer false positives than regex.
+* `require_valid_checksum` (default `true`) rejects random or invalid numbers that merely look like IDs.
+* Three mask styles are available: `partial` (default), `full`, and `type_only`.
+{% endhint %}
+
+## How does structured ID detection work?
 
 1. Candidate tokens are extracted using pattern matching
 2. Tokens are normalized (remove spaces/dashes, uppercase)
@@ -279,20 +296,20 @@ The `require_valid_checksum` option (default: `true`) significantly reduces fals
 
 ## Troubleshooting
 
-### ID Not Detected
+### How does structured ID detection work?
 
 1. Verify the ID format is supported
 2. Check if `require_valid_checksum` is filtering it out
 3. Ensure the correct ID type is enabled in config
 4. Test with the `/test` endpoint
 
-### Too Many False Positives
+### Why are there too many false positives?
 
 1. Enable `require_valid_checksum: true`
 2. Disable ID types you don't need
 3. Use more specific `national_id_types` list
 
-### Checksum Validation Failing
+### Why is checksum validation failing?
 
 1. Verify the ID has correct check digits
 2. Some test/example IDs may have invalid checksums

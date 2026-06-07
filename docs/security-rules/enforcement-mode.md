@@ -1,4 +1,8 @@
 ---
+description: >-
+  How CollieAi enforcement mode works — run security rules in monitor mode to
+  observe their impact on live traffic, then promote them to enforce when you're
+  confident.
 icon: '1'
 ---
 
@@ -6,7 +10,16 @@ icon: '1'
 
 Enforcement mode lets you safely deploy security rules without affecting live traffic. New rules can evaluate in the background while you review their impact, then promote them to active enforcement when you are confident in the results.
 
-## How It Works
+{% hint style="info" %}
+**Key points**
+
+* Enforcement mode controls whether a security rule's decision is applied (`enforce`) or only recorded (`monitor`).
+* It is set at two levels — policy and rule — and **monitor always wins** if either is set to monitor.
+* In monitor mode rules evaluate and report triggers (`"monitoring": true`) but never mask or block content.
+* The typical workflow is: deploy in monitor, review triggers, then promote to enforce.
+{% endhint %}
+
+## How does enforcement mode work?
 
 Enforcement mode is configured at two levels:
 
@@ -26,7 +39,7 @@ The effective mode for each rule is determined by combining both settings. The k
 
 This design ensures that a policy-level monitor cannot be overridden by individual rules, making it safe to put an entire policy into observation mode.
 
-## What Happens in Monitor Mode
+## What happens in monitor mode?
 
 When a rule runs in monitor mode:
 
@@ -195,3 +208,11 @@ Enforcement mode is transparent to clients. Whether a rule is in monitor or enfo
 ### Async Jobs
 
 When a monitored rule fires during an async job, the webhook payload includes the monitoring flag (`"monitoring": true`) in `triggered_rules` and `blocked` remains `false`. Your webhook handler can use this information for alerting or dashboarding without changing its processing logic.
+
+### Frequently asked questions
+
+**What is monitor mode in CollieAi?** Monitor mode is a CollieAi enforcement mode in which a security rule evaluates normally and records every trigger, but its decision is suppressed — no content is masked or blocked. It lets you observe rule impact on real traffic safely.
+
+**What is the difference between monitor and enforce mode?** In enforce mode a rule's decision is applied, so content is masked or blocked. In monitor mode the same rule evaluates and reports what would have happened, but the message passes through unchanged.
+
+**Can I test a single new rule without affecting live traffic?** Yes. Set an individual rule to monitor mode while keeping the policy in enforce mode. The rule evaluates and reports triggers without blocking anything, and you promote it to enforce once validated.

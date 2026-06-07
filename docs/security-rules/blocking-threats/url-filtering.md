@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi URL filtering blocks malicious links — normalize URLs (RFC 3986)
+  and filter by domain, scheme, and port to stop phishing, exfiltration,
+  IP-literal, and SSRF attempts.
+icon: filter-list
+---
+
 # URL filtering
 
-## Overview
+## What is the URL filter rule type?
 
 The URL Filter rule type enables detection and processing of URLs in messages according to configurable policies. It performs automatic URL normalization following RFC 3986 before applying filtering rules.
 
@@ -12,7 +20,16 @@ The URL Filter rule type enables detection and processing of URLs in messages ac
 * Blocking direct IP address access
 * Detecting URL obfuscation and encoding attacks
 
-## How It Works
+{% hint style="info" %}
+**Key points**
+
+* URL filtering detects and filters URLs in messages by domain, scheme, and port, with automatic RFC 3986 normalization.
+* It can block malicious or untrusted domains, restrict schemes (`file:`, `javascript:`, `data:`), and block IP-literal URLs to prevent SSRF.
+* Encoded-pattern detection catches obfuscation like `%2e%2e` path traversal and double-encoding.
+* `deny_domains` always takes priority over `allow_domains`, and domain matches include subdomains.
+{% endhint %}
+
+## How does URL filtering work?
 
 1. URLs are extracted from the message text using pattern matching
 2. Each URL is normalized according to RFC 3986 standards
@@ -292,27 +309,33 @@ When a URL filter rule matches, the metadata includes:
 
 ## Troubleshooting
 
-### URLs Not Being Detected
+### Why aren't URLs being detected?
 
 1. Verify the URL format is standard (`http://` or `https://`)
 2. Check if the URL is malformed or truncated
 3. Test with the `/test` endpoint to see extraction results
 
-### Unexpected Blocks
+### Why is a URL being blocked unexpectedly?
 
 1. Check if domain is in both allow and deny lists (`deny` takes priority)
 2. Verify port numbers match your allow list
 3. Check if `block_ip_literals` is blocking legitimate IP-based URLs
 4. Review normalized URL in metadata for case/encoding differences
 
-### Subdomain Issues
+### Why aren't subdomains matching as expected?
 
 1. Remember that `allow_domains: ["example.com"]` allows all subdomains
 2. Use `deny_domains` to block specific subdomains of allowed domains
 3. Check for typos in domain names
 
-### Performance Considerations
+### Does URL filtering affect performance?
 
 1. URL extraction and normalization add minimal overhead
 2. Large allow/deny lists are still fast (string comparison)
 3. Consider placing URL filter rules early in the order to catch malicious URLs quickly
+
+### Frequently asked questions
+
+**How does CollieAi block malicious URLs?** CollieAi's URL filter extracts and normalizes URLs (RFC 3986), then allows, masks, or blocks them by domain, scheme, and port — stopping untrusted domains, dangerous schemes, IP-literal URLs, and encoded obfuscation patterns.
+
+**Can CollieAi prevent data exfiltration through URLs?** Yes. You can restrict outbound URLs to an allowlist of trusted domains and block IP literals and encoded patterns, which helps prevent exfiltration and SSRF via crafted links.

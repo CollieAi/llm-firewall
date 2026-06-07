@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi regex rules detect and mask PII — use Python regular expressions
+  or 28 built-in presets to redact emails, secrets, cards, and custom patterns
+  in LLM messages.
+icon: asterisk
+---
+
 # Regex patterns
 
-## Overview
+## What is the regex rule type?
 
 The Regex rule type enables pattern matching using **Python regular expressions**. It's the most flexible rule type for detecting and masking custom patterns in messages.
 
@@ -12,7 +20,16 @@ The Regex rule type enables pattern matching using **Python regular expressions*
 * Simple pattern-based masking
 * Detecting specific text formats
 
-## How It Works
+{% hint style="info" %}
+**Key points**
+
+* The regex rule type detects and masks custom patterns in LLM messages using Python regular expressions.
+* CollieAi ships 28 built-in presets across personal data, secrets and keys, and network/infrastructure.
+* Each match can be masked with a custom replacement or a repeated mask character, or used to block the request.
+* Regex offers the most flexibility; structured IDs and dictionary matching trade flexibility for fewer false positives.
+{% endhint %}
+
+## How do regex rules work?
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -503,11 +520,11 @@ curl -X POST '.../rules/{rule_id}/test' \
 
 ### 6. Set Correct Direction
 
-| Direction  | Apply To              |
-| ---------- | --------------------- |
-| **Input**  | User messages only    |
-| **Output** | LLM responses only    |
-| **All**    | Both directions       |
+| Direction  | Apply To           |
+| ---------- | ------------------ |
+| **Input**  | User messages only |
+| **Output** | LLM responses only |
+| **All**    | Both directions    |
 
 ## Comparison: Regex vs Other Rules
 
@@ -539,21 +556,21 @@ curl -X POST '.../rules/{rule_id}/test' \
 
 ## Troubleshooting
 
-### Pattern Not Matching
+### Why isn't my regex pattern matching?
 
 1. **Check escaping**: Ensure backslashes are properly escaped in JSON
 2. **Test pattern**: Use Python to verify: `re.search(pattern, message)`
 3. **Check flags**: Try adding `re.IGNORECASE` (flag: 2)
 4. **Check boundaries**: Ensure `\b` is correct for your use case
 
-### Too Many False Positives
+### Why is my regex matching too much (false positives)?
 
 1. **Add word boundaries**: `\bword\b` instead of `word`
 2. **Be more specific**: Add required context around pattern
 3. **Use negative lookahead**: `pattern(?!exception)`
 4. **Consider Structured ID rule**: For validated formats like credit cards
 
-### Performance Issues
+### Why is my regex rule slow?
 
 1. **Avoid backtracking**: Use `(?:...)` non-capturing groups
 2. **Be specific**: Narrow down character classes
@@ -562,7 +579,7 @@ curl -X POST '.../rules/{rule_id}/test' \
 
 ## Configuration Schema
 
-The regex config is validated by the `RegexConfig` Pydantic model in `app/schemas/rule_configs.py`. Patterns are compiled at validation time to catch invalid regex early.
+The regex config is validated by the `RegexConfig` Pydantic model. Patterns are compiled at validation time to catch invalid regex early.
 
 ### New format (recommended)
 

@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi detects base64 payloads — identify data URIs and raw base64 in
+  prompts, tool calls, and responses, then block executables, enforce MIME and
+  size limits, and stop exfiltration.
+icon: square-binary
+---
+
 # Base64 Payloads
 
-## Overview
+## What is base64 payload detection?
 
 The Base64 Payload Detection rule type identifies and handles base64-encoded payloads embedded in prompts, tool-call arguments, or LLM responses. It supports both data URIs (`data:mime/type;base64,...`) and raw base64 strings.
 
@@ -11,6 +19,15 @@ The Base64 Payload Detection rule type identifies and handles base64-encoded pay
 * Enforcing content type policies on data URIs
 * Data exfiltration prevention
 * Compliance with payload size limits
+
+{% hint style="info" %}
+**Key points**
+
+* Base64 payload detection finds data URIs and raw base64 strings in prompts, tool-call arguments, and LLM responses.
+* It can identify file types from magic bytes and enforce MIME allowlists/blocklists, size limits, and payload counts.
+* Use it to block embedded executables, prevent data exfiltration, and control token costs from large encoded data.
+* A `min_length` threshold (default 50) and validation heuristics keep false positives low.
+{% endhint %}
 
 ## How It Works
 
@@ -291,7 +308,7 @@ The rule validates candidates to reduce false positives:
 
 ## Troubleshooting
 
-### Payload Not Detected
+### Why isn't my base64 payload detected?
 
 {% stepper %}
 {% step %}
@@ -319,7 +336,7 @@ Test with the `/test` endpoint
 {% endstep %}
 {% endstepper %}
 
-### Too Many False Positives
+### Why are there too many false positives?
 
 {% stepper %}
 {% step %}
@@ -341,7 +358,7 @@ Use `mime_blocklist` to target specific types
 {% endstep %}
 {% endstepper %}
 
-### File Type Not Detected
+### Why isn't the file type detected?
 
 {% stepper %}
 {% step %}
@@ -381,3 +398,9 @@ Some files may not have recognizable signatures
 
 * Prevent large image injection that increases token costs
 * Limit number of payloads per request
+
+### Frequently asked questions
+
+**Why block base64 payloads in LLM messages?** Base64-encoded payloads can hide executables, scripts, or exfiltrated data inside prompts and responses. CollieAi detects data URIs and raw base64, identifies file types from magic bytes, and can block, mask, or size-limit them.
+
+**Can CollieAi block embedded executables or large files?** Yes. With file-signature detection and a MIME blocklist you can block executables, and `max_decoded_bytes` and `max_occurrences` enforce size and payload-count limits per message.

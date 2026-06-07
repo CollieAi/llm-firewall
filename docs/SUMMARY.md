@@ -31,7 +31,7 @@
 
 * [Overview](security-rules/overview.md)
 * [Enforcement Mode](security-rules/enforcement-mode.md)
-* [Detecting PII](security-rules/detecting-pii/README.md)
+* [PII detection and redaction](security-rules/detecting-pii/README.md)
   * [Regex patterns](security-rules/detecting-pii/regex-patterns.md)
   * [Structured IDs](security-rules/detecting-pii/structured-ids.md)
   * [Dictionary matching](security-rules/detecting-pii/dictionary-matching.md)

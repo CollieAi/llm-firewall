@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi normalization defeats text obfuscation — Unicode (NFKC),
+  homoglyph mapping, zero-width removal, and whitespace cleanup so downstream
+  rules see clean, standardized text.
+icon: horizontal-rule
+---
+
 # Normalization
 
-## Overview
+## What is the normalization rule type?
 
 The Normalization rule type applies configurable text transformations to normalize messages before they are processed by subsequent rules in the filtering pipeline. Unlike other rules that detect and block/mask content, normalization rules transform the message text itself, making downstream pattern matching more effective.
 
@@ -12,7 +20,16 @@ The Normalization rule type applies configurable text transformations to normali
 * Removing invisible characters used for watermarking or evasion
 * Normalizing whitespace for cleaner text processing
 
-## How It Works
+{% hint style="info" %}
+**Key points**
+
+* Normalization transforms message text before other rules run, so downstream detection sees clean, standardized input.
+* It defeats obfuscation: Unicode normalization (NFKC), homoglyph mapping (e.g. Cyrillic lookalikes), zero-width removal, and whitespace cleanup.
+* It always transforms but never blocks, and preserves the original text hash and sample for auditing.
+* Place it early — but after ML rules (prompt injection, LLM detection), which expect natural, un-normalized text.
+{% endhint %}
+
+## How does normalization work?
 
 1. **Pipeline Position:** Place normalization rules early in the rule chain so subsequent rules see normalized text
 2. **Transformation Order:** Transformations are applied in a stable, predictable order
@@ -424,3 +441,9 @@ NFKC normalization ensures consistent representation.
 5. **Regex Operations:** Whitespace collapse and punctuation trim use regex
 
 Typical processing time: <1ms for messages under 10KB with all transformations enabled.
+
+### Frequently asked questions
+
+**How does CollieAi stop homoglyph and zero-width evasion?** CollieAi's normalization rule maps homoglyphs such as Cyrillic lookalikes to ASCII and strips zero-width characters, so an obfuscated phrase like "іgnore prevіous іnstructіons" becomes detectable plain text for downstream rules.
+
+**Does normalization block content?** No. Normalization only transforms the message text so later rules match more reliably; it never blocks on its own and preserves the original text hash and sample for auditing.

@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi dictionary matching filters content — fast Aho-Corasick word-list
+  matching for profanity, PII keywords, prompt injection, and custom terms
+  across 23 languages.
+icon: spell-check
+---
+
 # Dictionary matching
 
-## Overview
+## What is the dictionary match rule type?
 
 The Dictionary Match rule type (`aho_corasick`) enables efficient multi-pattern string matching using dictionary-based word lists. It uses the Aho-Corasick algorithm internally, which provides O(n + m + z) time complexity where n is text length, m is total pattern length, and z is number of matches.
 
@@ -12,7 +20,16 @@ The Dictionary Match rule type (`aho_corasick`) enables efficient multi-pattern 
 * Brand/competitor name filtering
 * Compliance keyword detection
 
-## How It Works
+{% hint style="info" %}
+**Key points**
+
+* Dictionary matching scans messages against word lists using the Aho-Corasick algorithm — O(n) regardless of dictionary size.
+* CollieAi ships 21 system dictionary groups across 23 languages (profanity, prompt injection, code secrets, brand safety, and more).
+* You can use system dictionaries or upload your own, and match in `substring` (exact) or `unordered` (any-order) mode.
+* It is faster than running many regex patterns and is ideal for keyword lists and custom blocklists.
+{% endhint %}
+
+## How does dictionary matching work?
 
 1. Dictionary words are compiled into an automaton (finite state machine)
 2. The automaton is cached in memory for fast repeated lookups
@@ -72,7 +89,7 @@ You must provide exactly one of `dictionary_id` or `dictionary_group_id`.
 }
 ```
 
-When `languages` is omitted, the rule reads the detected language from an upstream [Language Detection](/broken/pages/dc17d37cedc65c3d66bf4242e6ebb36b82682443) rule. If detection confidence is below the threshold configured on the language detection rule (default 50%), English is used as fallback.
+When `languages` is omitted, the rule reads the detected language from an upstream [Language Detection](../text-processing/language-detection.md) rule. If detection confidence is below the threshold configured on the language detection rule (default 50%), English is used as fallback.
 
 **Prompt Security with always\_include\_english:**
 
@@ -104,7 +121,7 @@ Dictionaries store word lists used for matching.
 
 ### Dictionary Groups
 
-Dictionaries are organized into **groups** -- each group represents a concept (e.g. "profanity", "brand-safety") with one dictionary per supported language. CollieAI ships with 21 system groups across 23 languages.
+Dictionaries are organized into **groups** -- each group represents a concept (e.g. "profanity", "brand-safety") with one dictionary per supported language. CollieAi ships with 21 system groups across 23 languages.
 
 When creating a rule, you can reference a group plus a language selection instead of a single dictionary. See the configuration table above.
 
@@ -575,7 +592,7 @@ Maximum number of words apart that phrase words can be in unordered mode. Only u
 
 ## Troubleshooting
 
-### Dictionary Not Found
+### Why is my dictionary not found?
 
 Ensure the dictionary\_id is correct and the dictionary is active:
 
@@ -583,7 +600,7 @@ Ensure the dictionary\_id is correct and the dictionary is active:
 GET /api/v1/dictionaries/{dictionary_id}
 ```
 
-### Matches Not Detected
+### Why aren't matches detected?
 
 1. Check `whole_word` setting - substring matches may be filtered out
 2. Verify `case_sensitive` setting matches your expectation
@@ -592,7 +609,7 @@ GET /api/v1/dictionaries/{dictionary_id}
 5. For unordered mode: check `window_size` — words may be too far apart to match
 6. For unordered mode: ensure **all** words from the phrase are present in the input
 
-### Performance Issues
+### Why is dictionary matching slow?
 
 1. Check dictionary word count (very large dictionaries may be slow to build)
 2. Verify automaton is being cached (check logs for cache hits)

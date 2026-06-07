@@ -1,12 +1,25 @@
 ---
+description: >-
+  How CollieAi security rules work — the input/output guardrails pipeline with 9
+  rule types for PII redaction, prompt injection blocking, and text processing.
 icon: toggle-large-on
 ---
 
 # Overview
 
-Security rules are the core of CollieAI. They define what to look for in messages and what to do when a match is found. Rules are organized inside [policies](/broken/pages/3363b7ce051b58141f1afd0d0e3f380b2a90637e), and each project has one active policy at a time.
+Security rules are the core of CollieAi's guardrails. A security rule defines what to look for in a message and what to do when a match is found — mask it, block it, or allow it. Rules are organized inside [policies](../projects-and-policies/policies.md), and each [project](../projects-and-policies/projects.md) has one active policy at a time.
 
-## How the Pipeline Works
+{% hint style="info" %}
+**Key points**
+
+* Security rules are CollieAi's guardrails — they inspect, mask, or block content on both input and output.
+* CollieAi provides 9 rule types in 3 categories: PII detection, threat blocking, and text processing.
+* Each rule has a decision (`allow`, `mask`, or `block`) and a direction (input, output, or all).
+* Rules run in order inside a policy, and each project has one active policy at a time.
+* Monitor mode lets you test rules without masking or blocking real traffic.
+{% endhint %}
+
+## How does the security rules pipeline work?
 
 Every request passes through a multi-stage pipeline:
 
@@ -52,47 +65,47 @@ Because `allow` and `block` both stop the pipeline, put your most important rule
 
 ## Directions
 
-| Direction    | When it runs                                                                                        |
-| ------------ | --------------------------------------------------------------------------------------------------- |
+| Direction  | When it runs                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------- |
 | **Input**  | Before the request is sent to the LLM provider. Use this to filter what the model sees.             |
 | **Output** | After the response comes back from the provider. Use this to filter what your application receives. |
-| **All**      | Runs on both input and output stages.                                                           |
+| **All**    | Runs on both input and output stages.                                                               |
 
-## The 9 Rule Types
+## What are the 9 security rule types?
 
-CollieAI provides 9 rule types organized into three categories:
+CollieAi provides 9 rule types organized into three categories:
 
 ### PII Detection
 
 Identify and mask personally identifiable information.
 
-| Type                                                                           | Description                                                                                                                                                 |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [**Regex Patterns**](/broken/pages/2758ce52079eab3cf924b9157be77a0d2ea48e02)   | Match custom patterns (emails, phone numbers, account IDs) using regular expressions.                                                                       |
-| [**Structured IDs**](/broken/pages/dbfff7aa5a38c6d1859fdd10c918e78034d890c9)   | Detect credit card numbers, IBANs, BIC/SWIFT codes, and national IDs with checksum validation.                                                              |
-| [**Dictionary Match**](/broken/pages/08a603b2d4a71a6d75f4f6c5c19fbd915b00652a) | Fast multi-pattern matching against word lists. Link a dictionary of terms (names, company names, medical terms) and find all occurrences in a single pass. |
+| Type                                                         | Description                                                                                                                                                 |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [**Regex Patterns**](detecting-pii/regex-patterns.md)        | Match custom patterns (emails, phone numbers, account IDs) using regular expressions.                                                                       |
+| [**Structured IDs**](detecting-pii/structured-ids.md)        | Detect credit card numbers, IBANs, BIC/SWIFT codes, and national IDs with checksum validation.                                                              |
+| [**Dictionary Match**](detecting-pii/dictionary-matching.md) | Fast multi-pattern matching against word lists. Link a dictionary of terms (names, company names, medical terms) and find all occurrences in a single pass. |
 
 ### Threat Blocking
 
 Prevent malicious or unwanted content from reaching the model or your users.
 
-| Type                                                                           | Description                                                                                                                |
-| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| [**Prompt Injection**](/broken/pages/511a7a12e6e081c01f866708abbb9a29b7baa155) | A lightweight ML classifier that detects prompt injection and jailbreak attempts with a configurable confidence threshold. |
-| [**LLM Detection**](/broken/pages/331a04445a5e9af126e9dc37b7843d10ee9a9080)    | Uses a secondary LLM call to analyze messages for sophisticated injection attacks that evade simpler classifiers.          |
-| [**URL Filtering**](/broken/pages/309f46749e98ff15e6d52132476582d0e46982e7)    | Inspect URLs in messages. Allow or deny specific schemes, domains, and ports. Block IP literals and encoded patterns.      |
-| [**Base64 Payloads**](/broken/pages/43ed53bca68e4b3d1aeb7fe0ca888c03b1b1423a)  | Detect base64-encoded content that might hide malicious payloads. Configure minimum length and file signature detection.   |
+| Type                                                         | Description                                                                                                                |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| [**Prompt Injection**](blocking-threats/prompt-injection.md) | A lightweight ML classifier that detects prompt injection and jailbreak attempts with a configurable confidence threshold. |
+| [**LLM Detection**](blocking-threats/llm-detection.md)       | Uses a secondary LLM call to analyze messages for sophisticated injection attacks that evade simpler classifiers.          |
+| [**URL Filtering**](blocking-threats/url-filtering.md)       | Inspect URLs in messages. Allow or deny specific schemes, domains, and ports. Block IP literals and encoded patterns.      |
+| [**Base64 Payloads**](blocking-threats/base64-payloads.md)   | Detect base64-encoded content that might hide malicious payloads. Configure minimum length and file signature detection.   |
 
 ### Text Processing
 
 Normalize or classify content before other rules run.
 
-| Type                                                                             | Description                                                                                                                   |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| [**Normalization**](/broken/pages/3d868483dff62181bca1fa2636fef459d62d3157)      | Standardize Unicode, whitespace, and encoding to prevent rule-evasion tricks (homoglyphs, zero-width characters, diacritics). |
-| [**Language Detection**](/broken/pages/35baca5a0d913a9f93a2e32146628b2b6a3e1381) | Identify the language of the content and optionally block unsupported languages.                                              |
+| Type                                                            | Description                                                                                                                   |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| [**Normalization**](text-processing/normalization.md)           | Standardize Unicode, whitespace, and encoding to prevent rule-evasion tricks (homoglyphs, zero-width characters, diacritics). |
+| [**Language Detection**](text-processing/language-detection.md) | Identify the language of the content and optionally block unsupported languages.                                              |
 
-## Best Practices for Rule Ordering
+## How should you order security rules?
 
 A well-ordered pipeline processes text in layers. Here is a recommended pattern:
 
@@ -109,12 +122,22 @@ This ordering ensures that normalization happens first (so attackers cannot bypa
 
 Policies can run in **enforce** or **monitor** mode. In monitor mode, rules still evaluate and their results are recorded, but content is never actually masked or blocked. This is useful for testing new rules before enabling them in production.
 
-See [Enforcement Mode](/broken/pages/1fdf541d9fa5a4a6abccb61802163b5b1165aa0e) for details.
+See [Enforcement Mode](enforcement-mode.md) for details.
 
 ## Next Steps
 
-* [Enforcement Mode](/broken/pages/1fdf541d9fa5a4a6abccb61802163b5b1165aa0e) -- Understand enforce vs. monitor mode.
-* [Detecting PII](/broken/pages/d48a8216437a2ca9df0c414b29aab3627ea5b1c4) -- Regex, structured IDs, and dictionary matching.
-* [Blocking Threats](/broken/pages/dd999da5021942ff72e2e9d16fc2166acaee8bd0) -- Prompt injection, LLM detection, URL filtering, base64.
-* [Text Processing](/broken/pages/e0b4966a4a13ae998f54dc096e30cd346760d03f) -- Normalization and language detection.
-* [Policies](/broken/pages/3363b7ce051b58141f1afd0d0e3f380b2a90637e) -- How rules are organized into policies.
+* [Enforcement Mode](enforcement-mode.md) -- Understand enforce vs. monitor mode.
+* [Detecting PII](detecting-pii/) -- Regex, structured IDs, and dictionary matching.
+* [Blocking Threats](blocking-threats/) -- Prompt injection, LLM detection, URL filtering, base64.
+* [Text Processing](text-processing/) -- Normalization and language detection.
+* [Policies](../projects-and-policies/policies.md) -- How rules are organized into policies.
+
+### Frequently asked questions
+
+**What is a security rule in CollieAi?** A security rule in CollieAi is a guardrail that defines what to look for in a message and what to do on a match — allow, mask, or block — applied to input, output, or both.
+
+**What types of security rules does CollieAi support?** CollieAi supports 9 rule types in three categories: PII detection (regex patterns, structured IDs, dictionary matching), threat blocking (prompt injection, LLM detection, URL filtering, base64 payloads), and text processing (normalization, language detection).
+
+**What is the difference between mask and block?** A mask decision replaces the matched content with a placeholder and lets processing continue, while a block decision rejects the entire request with a policy\_violation error and stops the pipeline.
+
+**Can I test security rules before enforcing them?** Yes. CollieAi policies can run in monitor mode, where rules evaluate and results are recorded but content is never actually masked or blocked — useful for testing new rules before production.

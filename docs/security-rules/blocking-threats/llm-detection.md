@@ -1,12 +1,29 @@
+---
+description: >-
+  How CollieAi LLM-based detection catches prompt injection — a generative model
+  (Qwen, Phi-3) analyzes messages with explainable JSON reasoning to flag novel
+  and sophisticated attacks.
+icon: radar
+---
+
 # LLM detection
 
-## Overview
+## What is LLM-based detection?
 
 The LLM Detection rule uses generative language models to detect prompt injection attacks. The default prompt is optimized for simple, deterministic classification that outputs "safe" or "injection".
 
 * **Detection result**: Whether the message is an injection attempt
 * **Confidence score**: 0.9 for simple text output (configurable with custom JSON prompts)
 * **Low latency**: Only generates a single word, not lengthy explanations
+
+{% hint style="info" %}
+**Key points**
+
+* LLM-based detection uses a generative model (Qwen, Phi-3) to detect prompt injection, with explainable JSON reasoning.
+* It is better at catching novel and sophisticated attacks than a lightweight classifier, at higher latency (100–500 ms).
+* The default prompt outputs a single word ("safe"/"injection") for fast, deterministic, low-false-positive classification.
+* Use it alongside the lightweight ML classifier — the classifier for speed, LLM detection for explainability and novel attacks.
+{% endhint %}
 
 ## Ideal Use Cases
 
@@ -18,13 +35,13 @@ The LLM Detection rule uses generative language models to detect prompt injectio
 
 ## Supported Models
 
-| Model ID                           | Size        | Speed   | Best For                                             |
-| ---------------------------------- | ----------- | ------- | ---------------------------------------------------- |
+| Model ID                           | Size        | Speed   | Best For                                                                           |
+| ---------------------------------- | ----------- | ------- | ---------------------------------------------------------------------------------- |
 | `Qwen/Qwen3-8B`                    | 8B params   | Medium  | **Best accuracy** — production default on app-server, requires Blackwell-class GPU |
-| `Qwen/Qwen2.5-7B-Instruct`         | 7B params   | Medium  | Strong accuracy on pre-Blackwell GPUs (8-bit quantized) |
-| `Qwen/Qwen2.5-1.5B-Instruct`       | 1.5B params | Fast    | Good balance of accuracy and speed                   |
-| `Qwen/Qwen2.5-0.5B-Instruct`       | 0.5B params | Fastest | Low resource only (⚠️ higher false positives)        |
-| `microsoft/Phi-3-mini-4k-instruct` | 3.8B params | Slower  | Excellent reasoning capabilities                     |
+| `Qwen/Qwen2.5-7B-Instruct`         | 7B params   | Medium  | Strong accuracy on pre-Blackwell GPUs (8-bit quantized)                            |
+| `Qwen/Qwen2.5-1.5B-Instruct`       | 1.5B params | Fast    | Good balance of accuracy and speed                                                 |
+| `Qwen/Qwen2.5-0.5B-Instruct`       | 0.5B params | Fastest | Low resource only (⚠️ higher false positives)                                      |
+| `microsoft/Phi-3-mini-4k-instruct` | 3.8B params | Slower  | Excellent reasoning capabilities                                                   |
 
 {% hint style="warning" %}
 The 0.5B model may produce false positives on normal messages. Use 1.5B or larger for production.
@@ -163,7 +180,7 @@ You can also customize how the user message is presented:
 
 **Important**: Custom `user_template` MUST contain the `{message}` placeholder.
 
-## How It Works
+## How does LLM detection work?
 
 ### Processing Flow
 
@@ -197,15 +214,15 @@ The LLM is instructed to output JSON in this format:
 
 ## Comparison: LLM Detection vs Lightweight Model
 
-| Aspect                   | LLM Detection                    | Lightweight Model              |
-| ------------------------ | -------------------------------- | ------------------------------ |
-| Model Type               | Generative (Qwen, Phi-3)         | Classification (BERT, DeBERTa) |
-| Output                   | JSON with reasoning              | Label + confidence             |
-| Explainability           | Full reasoning                   | Labels only                    |
-| Speed                    | 100-500ms                        | 10-50ms                        |
-| Memory                   | 1-8GB                            | 0.5-1GB                        |
-| Novel attacks            | Better detection                 | May miss patterns              |
-| False positive debugging | Easier (has reasoning)           | Harder                         |
+| Aspect                   | LLM Detection            | Lightweight Model              |
+| ------------------------ | ------------------------ | ------------------------------ |
+| Model Type               | Generative (Qwen, Phi-3) | Classification (BERT, DeBERTa) |
+| Output                   | JSON with reasoning      | Label + confidence             |
+| Explainability           | Full reasoning           | Labels only                    |
+| Speed                    | 100-500ms                | 10-50ms                        |
+| Memory                   | 1-8GB                    | 0.5-1GB                        |
+| Novel attacks            | Better detection         | May miss patterns              |
+| False positive debugging | Easier (has reasoning)   | Harder                         |
 
 **Recommendation**:
 
@@ -249,27 +266,27 @@ Models can be preloaded at startup by configuring `PRELOAD_MODELS=true` in envir
 
 ## Troubleshooting
 
-### High Latency
+### Why is latency high?
 
 * Use a smaller model (Qwen 0.5B)
 * Use default prompt (outputs single word, `max_new_tokens=10`)
 * Enable GPU acceleration (`CUDA_VISIBLE_DEVICES`)
 * Increase `inference_timeout` if timeouts occur
 
-### Poor Detection Accuracy
+### Why is detection accuracy poor?
 
 * Try a larger model (Qwen 7B with GPU, or Qwen 1.5B / Phi-3)
 * Lower the threshold to 0.60
 * Customize the system prompt for your specific use case
 * Check if messages are being truncated (increase `max_input_chars`)
 
-### Memory Issues
+### Why am I running out of memory?
 
 * Use Qwen 0.5B (smallest model)
 * Disable model preloading if not frequently used
 * Monitor memory usage with system tools
 
-### JSON Parsing Errors
+### Why are there JSON parsing errors?
 
 The service has multiple fallback strategies for parsing LLM output:
 
@@ -394,3 +411,11 @@ To add support for new generative models:
 3. Document the model's characteristics in this file
 
 Models with 7B+ parameters are automatically loaded with 8-bit quantization when GPU is available. The parameter count is estimated from the model ID (e.g., "7B" in the name). No additional configuration is needed.
+
+### Frequently asked questions
+
+**What is LLM-based prompt injection detection?** LLM-based detection in CollieAi uses a generative model to analyze each message for prompt injection and return a structured verdict with confidence and reasoning, which makes it strong at catching novel attacks and explaining why a message was flagged.
+
+**How is LLM detection different from the lightweight ML classifier?** The lightweight classifier is a fast BERT-style model (10–50 ms) that returns a label and confidence, while LLM detection is a generative model (100–500 ms) that returns JSON with reasoning — better for novel attacks and explainability, at higher latency.
+
+**Can I see why a message was flagged?** Yes. With a JSON system prompt, CollieAi's LLM detection returns an `is_injection` flag, a `confidence` score, and a `reasoning` explanation in the match metadata.
