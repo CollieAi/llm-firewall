@@ -1,10 +1,13 @@
 ---
+description: >-
+  How CollieAi reports errors — the OpenAI-compatible error format, error types,
+  policy-violation responses with triggered rules, and troubleshooting steps.
 icon: lightbulb-exclamation-on
 ---
 
 # Error handling
 
-CollieAI returns all errors in the OpenAI-compatible format, so existing error handling code in your application works without changes. This page covers the error format, CollieAI-specific error types, and practical patterns for handling them.
+CollieAi returns all errors in the OpenAI-compatible format, so existing error handling code in your application works without changes. This page covers the error format, CollieAi-specific error types, and practical patterns for handling them.
 
 ## Error Response Format
 
@@ -28,18 +31,18 @@ Every error response follows the same structure:
 
 ## Error Types
 
-| HTTP Status | Type                    | Code               | Description                                               |
-| ----------- | ----------------------- | ------------------ | --------------------------------------------------------- |
-| 400         | `policy_violation`      | `content_blocked`  | An input rule blocked the user's message.               |
-| 400         | `policy_violation`      | `response_blocked` | An output rule blocked the model's response.            |
-| 400         | `invalid_request_error` | --                 | The request body is malformed or missing required fields. |
-| 401         | `authentication_error`  | `invalid_api_key`  | The API key is missing, malformed, or does not exist.     |
-| 401         | `authentication_error`  | `expired_api_key`  | The API key has passed its expiration date.               |
-| 403         | `permission_error`      | `project_inactive` | The project associated with the API key is disabled.      |
-| 403         | `permission_error`      | `ip_not_allowed`   | The request IP is not in the account's IP allowlist.      |
-| 429         | `rate_limit_exceeded`   | --                 | Too many requests. Back off and retry.                    |
-| 500         | `internal_error`        | --                 | An unexpected error on the CollieAI side.                 |
-| 502         | `upstream_error`        | --                 | OpenAI returned an error or was unreachable.              |
+| HTTP Status | Type                    | Code               | Description                                                 |
+| ----------- | ----------------------- | ------------------ | ----------------------------------------------------------- |
+| 400         | `policy_violation`      | `content_blocked`  | An input rule blocked the user's message.                   |
+| 400         | `policy_violation`      | `response_blocked` | An output rule blocked the model's response.                |
+| 400         | `invalid_request_error` | --                 | The request body is malformed or missing required fields.   |
+| 401         | `authentication_error`  | `invalid_api_key`  | The API key is missing, malformed, or does not exist.       |
+| 401         | `authentication_error`  | `expired_api_key`  | The API key has passed its expiration date.                 |
+| 403         | `permission_error`      | `project_inactive` | The project associated with the API key is disabled.        |
+| 403         | `permission_error`      | `ip_not_allowed`   | The request IP is not in the account's IP allowlist.        |
+| 429         | `rate_limit_exceeded`   | --                 | Too many requests. Back off and retry.                      |
+| 500         | `internal_error`        | --                 | An unexpected error on the CollieAi side.                   |
+| 502         | `upstream_error`        | --                 | The upstream provider returned an error or was unreachable. |
 
 ## Policy Violation Responses
 
@@ -159,7 +162,7 @@ Masked responses use the standard completion format. The redacted placeholders (
 
 ## Python Error Handling
 
-The OpenAI Python SDK maps HTTP errors to specific exception classes. Use these to handle CollieAI errors:
+The OpenAI Python SDK maps HTTP errors to specific exception classes. Use these to handle CollieAi errors:
 
 ```python
 from openai import OpenAI, APIError, AuthenticationError, RateLimitError
@@ -379,18 +382,18 @@ try {
 
 ## Troubleshooting
 
-### Request blocked unexpectedly
+### Why was my request blocked unexpectedly?
 
 **Symptom:** You receive a `content_blocked` error for a message you believe is legitimate.
 
 **Steps to resolve:**
 
 1. Check the `triggered_rules` array in the error response to see which rule fired.
-2. Review the rule's configuration in the CollieAI dashboard -- it may be too broad.
+2. Review the rule's configuration in the CollieAi dashboard -- it may be too broad.
 3. Test the rule with different inputs using the rule testing feature in the dashboard.
 4. Adjust the rule's sensitivity, update its patterns, or add exceptions for your use case.
 
-### Authentication errors
+### Why am I getting authentication errors?
 
 **Symptom:** You receive a 401 error with `invalid_api_key` or `expired_api_key`.
 
@@ -400,20 +403,20 @@ try {
 2. Confirm the key has not expired by checking the dashboard.
 3. Ensure the associated project is active (an inactive project returns `project_inactive`).
 4. Check that the `Authorization` header is formatted as `Bearer clai_your_api_key_here`.
-5. If using environment variables, confirm `OPENAI_API_KEY` is set to your CollieAI key (not your OpenAI key).
+5. If using environment variables, confirm `OPENAI_API_KEY` is set to your CollieAi key (not your OpenAI key).
 
-### Timeout errors
+### Why are my requests timing out?
 
 **Symptom:** Requests take too long or time out.
 
 **Steps to resolve:**
 
-1. CollieAI adds a small amount of latency for filtering (typically 50-200ms). Increase your client timeout to account for this.
+1. CollieAi adds a small amount of latency for filtering (typically 50-200ms). Increase your client timeout to account for this.
 2. If you have machine learning-based rules enabled (e.g. prompt injection detection), these add more latency than pattern-based rules. Consider whether all ML rules are necessary for your use case.
 3. For streaming with output rules, the first chunk is delayed while the full response is accumulated and filtered. Set a higher timeout for streaming requests.
-4. Check the CollieAI status page for any ongoing incidents.
+4. Check the CollieAi status page for any ongoing incidents.
 
-### Streaming issues
+### Why isn't streaming working?
 
 **Symptom:** Streaming does not work, hangs, or produces unexpected output.
 
@@ -421,10 +424,10 @@ try {
 
 1. Confirm `stream: true` is set in your request body.
 2. Ensure your HTTP client or reverse proxy does not buffer SSE responses. Common culprits include Nginx (set `proxy_buffering off;`) and cloud load balancers.
-3. If the stream terminates early with an error, check whether an output rule blocked the response. See [Streaming](/broken/pages/b3d45e7b0803399b1834e5f260aa414c6a40075b) for details on how output filtering interacts with streaming.
+3. If the stream terminates early with an error, check whether an output rule blocked the response. See [Streaming](streaming.md) for details on how output filtering interacts with streaming.
 4. Verify your client correctly handles the `data: [DONE]` termination signal.
 
-### Rate limit exceeded
+### Why am I getting a rate limit (429) error?
 
 **Symptom:** You receive a 429 error with type `rate_limit_exceeded`.
 
@@ -433,19 +436,19 @@ try {
 1. Check the `X-RateLimit-Remaining` header on your responses to see how many requests you have left.
 2. Use the `Retry-After` header to know when to retry.
 3. Increase the project's `rate_limit_rpm` setting if the current limit is too low.
-4. If `rate_limit_rpm` is null (unlimited), the 429 is being proxied from OpenAI -- check your OpenAI quota.
+4. If `rate_limit_rpm` is null (unlimited), the 429 is being proxied from your upstream provider — check your provider quota.
 
 {% hint style="info" %}
-A 429 error can come from CollieAI's own per-project rate limiter or from the upstream OpenAI API. Check whether your project has `rate_limit_rpm` configured to distinguish the two.
+A 429 error can come from CollieAi's own per-project rate limiter or from the upstream OpenAI API. Check whether your project has `rate_limit_rpm` configured to distinguish the two.
 {% endhint %}
 
-### Upstream errors
+### Why am I getting an upstream (502) error?
 
 **Symptom:** You receive a 502 error with type `upstream_error`.
 
 **Steps to resolve:**
 
-1. This means OpenAI returned an error or was unreachable. Check the [OpenAI status page](https://status.openai.com/) for outages.
-2. Verify that your project's provider token (OpenAI API key) is valid and has sufficient quota.
+1. This means your upstream provider returned an error or was unreachable. Check your provider's status page (for example, the [OpenAI status page](https://status.openai.com/)) for outages.
+2. Verify that your project's provider token (e.g. your OpenAI or Anthropic API key).
 3. Confirm the model you are requesting is available (e.g. `gpt-4o-mini` vs a model that requires special access).
 4. Retry the request -- transient upstream errors are common.

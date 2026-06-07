@@ -1,15 +1,23 @@
 ---
-icon: anthropic
+description: >-
+  Connect Anthropic's Claude to CollieAi — use the native Messages API
+  (/v1/messages) or the OpenAI-compatible endpoint with claude-* models, secured
+  by the same guardrails.
+icon: claude
 ---
 
 # Anthropic SDK Integration
 
-CollieAI proxies Anthropic's Claude models through two surfaces:
+CollieAi proxies Anthropic's Claude models through two surfaces:
 
-- **`/v1/chat/completions`** — OpenAI-compatible. Use this when migrating an OpenAI-based app to Claude with a single line change. CollieAi translates between OpenAI and Anthropic shapes automatically.
-- **`/v1/messages`** — Native Anthropic Messages API. Use this when your app already uses the Anthropic SDK directly.
+* **`/v1/chat/completions`** — OpenAI-compatible. Use this when migrating an OpenAI-based app to Claude with a single line change. CollieAi translates between OpenAI and Anthropic shapes automatically.
+* **`/v1/messages`** — Native Anthropic Messages API. Use this when your app already uses the Anthropic SDK directly.
 
 Both surfaces apply the same authentication, rate limiting, content filtering, and audit logging.
+
+{% hint style="info" %}
+Using OpenAI models instead? See [OpenAI SDK Integration](openai-sdk-integration.md) — CollieAi applies the same security pipeline across every provider.
+{% endhint %}
 
 ## Add an Anthropic provider token
 
@@ -120,19 +128,19 @@ with client.messages.stream(
 
 ## Supported features (v1)
 
-| Feature | `/v1/chat/completions` (claude-* model) | `/v1/messages` (native) |
-|---|---|---|
-| Text generation | ✅ | ✅ |
-| Streaming | ✅ | ✅ |
-| System prompts | ✅ (auto-extracted from messages) | ✅ (top-level `system` field) |
-| Stop sequences | ✅ (`stop` → `stop_sequences`) | ✅ |
-| Temperature / top_p | ✅ | ✅ |
-| Prompt caching | ✅ (counts surface in usage metrics) | ✅ |
-| Tool calling | ❌ — coming in a later release | ❌ — coming in a later release |
-| Vision (image input) | ❌ — coming in a later release | ❌ — coming in a later release |
-| `n > 1` (multiple completions) | ❌ — Anthropic doesn't support | n/a |
-| `logprobs` | ❌ — Anthropic doesn't support | n/a |
-| `response_format` (JSON mode) | ❌ — use prompt-based guidance instead | n/a |
+| Feature                        | `/v1/chat/completions` (claude-\* model) | `/v1/messages` (native)       |
+| ------------------------------ | ---------------------------------------- | ----------------------------- |
+| Text generation                | ✅                                        | ✅                             |
+| Streaming                      | ✅                                        | ✅                             |
+| System prompts                 | ✅ (auto-extracted from messages)         | ✅ (top-level `system` field)  |
+| Stop sequences                 | ✅ (`stop` → `stop_sequences`)            | ✅                             |
+| Temperature / top\_p           | ✅                                        | ✅                             |
+| Prompt caching                 | ✅ (counts surface in usage metrics)      | ✅                             |
+| Tool calling                   | ❌ — coming in a later release            | ❌ — coming in a later release |
+| Vision (image input)           | ❌ — coming in a later release            | ❌ — coming in a later release |
+| `n > 1` (multiple completions) | ❌ — Anthropic doesn't support            | n/a                           |
+| `logprobs`                     | ❌ — Anthropic doesn't support            | n/a                           |
+| `response_format` (JSON mode)  | ❌ — use prompt-based guidance instead    | n/a                           |
 
 Unsupported fields are rejected on BOTH surfaces with `400 unsupported_for_provider` rather than silently dropped — your code won't surprise you with mismatched semantics, and you get identical errors whether you call `/v1/chat/completions` or `/v1/messages`. On the native route the rejection also covers non-text content blocks (`image`, `tool_use`, `tool_result`, `document`, `thinking`) because CollieAi's filter and prompt-size cap operate on text. See [v1 restrictions on /v1/messages](../api-reference/messages.md#v1-restrictions) for the full list.
 
@@ -140,12 +148,20 @@ Unsupported fields are rejected on BOTH surfaces with `400 unsupported_for_provi
 
 CollieAi recognizes any model name starting with `claude-` (or `claude.`) as Anthropic. The curated list returned by `GET /v1/models` includes:
 
-- `claude-opus-4-7`
-- `claude-opus-4-6`
-- `claude-sonnet-4-6`
-- `claude-haiku-4-5-20251001`
-- `claude-3-5-sonnet-20241022`
-- `claude-3-5-haiku-20241022`
-- `claude-3-opus-20240229`
+* `claude-opus-4-7`
+* `claude-opus-4-6`
+* `claude-sonnet-4-6`
+* `claude-haiku-4-5-20251001`
+* `claude-3-5-sonnet-20241022`
+* `claude-3-5-haiku-20241022`
+* `claude-3-opus-20240229`
 
 Other Claude variants (Bedrock, custom deployments) work too as long as the name starts with `claude-`.
+
+### Frequently asked questions
+
+**Can I use Claude with CollieAi?** Yes. CollieAi proxies Anthropic's Claude models through two surfaces — the native Messages API at `/v1/messages` and the OpenAI-compatible `/v1/chat/completions` endpoint with a `claude-*` model name — both secured by the same guardrails.
+
+**Do I need to change my Anthropic SDK code to use CollieAi?** No. You use the Anthropic SDK exactly as you would against api.anthropic.com and only point `base_url` at CollieAi. CollieAi accepts the SDK's default `x-api-key` header, so no header overrides are needed.
+
+**Can I keep the OpenAI SDK while calling Claude through CollieAi?** Yes. Keep your OpenAI client and send a `claude-*` model name; CollieAi routes the request to Anthropic and translates the response back to OpenAI shape.

@@ -1,4 +1,8 @@
 ---
+description: >-
+  How CollieAi streams LLM responses — real-time SSE streaming with output
+  guardrails enforced on the stream, in both incremental and buffered modes, for
+  OpenAI and Anthropic.
 icon: signal-stream
 ---
 
@@ -7,12 +11,21 @@ icon: signal-stream
 CollieAi supports Server-Sent Events (SSE) streaming, matching the OpenAI and Anthropic streaming formats. Your existing streaming code works without modification — just point it at CollieAi.
 
 {% hint style="info" %}
+**Key points**
+
+* CollieAi supports real-time SSE streaming and enforces output security rules on the stream itself.
+* There are two delivery paths: incremental (near-real-time) and buffered (after full generation plus filtering).
+* The wire format is identical to the upstream provider — OpenAI-compatible on `/v1/chat/completions`, Anthropic-native on `/v1/messages`.
+* You set the streaming mode (`auto`, `incremental`, `buffered`) per project, and CollieAi never silently overrides it.
+{% endhint %}
+
+{% hint style="info" %}
 **Using a non-OpenAI/Anthropic model?** This page covers streaming through the drop-in proxy. If you're calling your own model (self-hosted, open-source, multi-provider router) and want filtered streaming output, push chunks into a job instead — see [Customer-owned streaming](../async-jobs/customer-owned-streaming.md).
 {% endhint %}
 
 How quickly the first token reaches your client depends on your project's **streaming mode** and the security rules in the project's active policy. There are two delivery paths:
 
-1. **Incremental streaming** — safe text is released to your client as the upstream model generates it. Rules run on a sliding window so violations are caught mid-stream. This is what you get for projects on `streaming_mode = "auto"` (the default for new projects) or `"incremental"`, *when every active output rule supports streaming*.
+1. **Incremental streaming** — safe text is released to your client as the upstream model generates it. Rules run on a sliding window so violations are caught mid-stream. This is what you get for projects on `streaming_mode = "auto"` (the default for new projects) or `"incremental"`, _when every active output rule supports streaming_.
 2. **Buffered streaming** — CollieAi accumulates the upstream model's full response, applies output rules to the complete text, then replays the result to your client in SSE format. This is what you get on `streaming_mode = "buffered"`, OR on `auto`/`incremental` projects where any active rule needs full context to make a decision (for example LLM-detection rules, language detection, or multi-rule policies that haven't been cleared for cascading streaming yet).
 
 In both cases the wire format is identical — your client doesn't need to know which path served the request. The difference is **first-token latency**: incremental is near-real-time, buffered is delayed by the full upstream generation time plus the time to apply your output rules.
@@ -25,11 +38,11 @@ The mode lives on the project, not the request. Set it via the dashboard or [`PA
 {"streaming_mode": "auto"}
 ```
 
-| Mode | When to choose |
-|---|---|
-| `auto` *(default for new projects)* | You want incremental streaming when CollieAi can prove it's safe, buffered otherwise. The right default for most apps. |
-| `incremental` | Same behavior as `auto` today. Keep this if you want to be explicit that you're opting into streaming (and to make a future "auto with traffic heuristics" change opt-in only). |
-| `buffered` | You want CollieAi to always buffer-then-replay. Use this if your app is latency-insensitive and you'd rather not deal with mid-stream blocks (a block on incremental can fire after some safe text has already been delivered to your client). |
+| Mode                                | When to choose                                                                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auto` _(default for new projects)_ | You want incremental streaming when CollieAi can prove it's safe, buffered otherwise. The right default for most apps.                                                                                                                         |
+| `incremental`                       | Same behavior as `auto` today. Keep this if you want to be explicit that you're opting into streaming (and to make a future "auto with traffic heuristics" change opt-in only).                                                                |
+| `buffered`                          | You want CollieAi to always buffer-then-replay. Use this if your app is latency-insensitive and you'd rather not deal with mid-stream blocks (a block on incremental can fire after some safe text has already been delivered to your client). |
 
 If you're not sure which mode you're on, the project's [Analytics page](../monitoring/analytics.md) shows a **Streaming engine** card with delivery mix per window.
 
@@ -126,7 +139,7 @@ for chunk in stream:
 print()  # Newline after the stream completes
 ```
 
-## How incremental streaming works
+## How does incremental streaming works
 
 When your project's mode is `auto` or `incremental` AND every active output rule supports streaming, CollieAi runs rules on a **sliding window** as text arrives:
 
@@ -156,7 +169,7 @@ If a rule fires on the stable window:
 * **Mask** — the matched region is replaced with the rule's placeholder (e.g. `[EMAIL_REDACTED]`) before the affected chunk is released. Some safe text may have already reached your client before the match was detected; CollieAi never recalls already-sent bytes.
 * **Block** — the stream emits a single error chunk and closes. Any safe text already released to your client stays — your application has to handle the early termination.
 
-## How buffered streaming works
+## How does buffered streaming works
 
 When your project's mode is `buffered`, OR when a rule in the policy can't be evaluated on a streaming window (e.g. LLM-detection rules need the full text), CollieAi accumulates the upstream response, applies rules to the complete text, then replays the result:
 
@@ -222,7 +235,7 @@ On the incremental path, this error can arrive **after** some safe text has alre
 ## Best practices
 
 * **Set appropriate client timeouts.** On the buffered path, first-token latency equals the full upstream generation time plus filter time. Set your client timeout to at least the expected generation time plus 10–15 seconds. For long outputs, consider 60–120 seconds. On the incremental path, the first token arrives in milliseconds, but the overall timeout should still cover the full generation in case the policy hits a buffered fallback.
-* **Handle stream errors gracefully.** A stream can be interrupted by a policy violation at any point. Always wrap your streaming loop in a try/except (Python) or try/catch (Node.js) block. See [Error Handling](/broken/pages/f519424725e6a060aa446fb73674ebd70d4b8a5c) for details.
+* **Handle stream errors gracefully.** A stream can be interrupted by a policy violation at any point. Always wrap your streaming loop in a try/except (Python) or try/catch (Node.js) block. See [Error Handling](error-handling.md) for details.
 * **Use buffered mode if mid-stream blocks complicate your UX.** If your app can't easily surface a policy block after some text has already rendered, set `streaming_mode = "buffered"` so the block (if any) fires before your client sees any content. The latency trade-off is the cost.
 * **Test with your output rules enabled.** The delivery path depends on which rules are active. Test in your development environment with the same policy you run in production so you don't get a different delivery profile on launch.
 * **Consider `stream_options` for token usage.** If you need token usage information in streaming mode, pass `stream_options: {"include_usage": true}` in your request. The final chunk will include a `usage` field.
@@ -238,11 +251,11 @@ stream = client.chat.completions.create(
 
 ## Streaming vs non-streaming comparison
 
-| Aspect | Non-streaming | Streaming (buffered) | Streaming (incremental) |
-|---|---|---|---|
-| Wire format | Single JSON response | SSE chunks (`data:` lines) | SSE chunks (`data:` lines) |
-| Time to first token | After full generation + filtering | After full generation + filtering | Within milliseconds of the upstream's first token |
-| Delivery after filtering | All at once | Chunk by chunk (rapid replay) | Continuous, with a small held-back suffix |
-| Mid-stream blocks | Not applicable | Block fires before any content reaches client | Block can fire after some safe text has reached client |
-| Client compatibility | Any HTTP client | SSE-capable client required | SSE-capable client required |
-| Best for | Short responses, simple integrations | Long responses where UX needs all-or-nothing | Long responses where time-to-first-token matters |
+| Aspect                   | Non-streaming                        | Streaming (buffered)                          | Streaming (incremental)                                |
+| ------------------------ | ------------------------------------ | --------------------------------------------- | ------------------------------------------------------ |
+| Wire format              | Single JSON response                 | SSE chunks (`data:` lines)                    | SSE chunks (`data:` lines)                             |
+| Time to first token      | After full generation + filtering    | After full generation + filtering             | Within milliseconds of the upstream's first token      |
+| Delivery after filtering | All at once                          | Chunk by chunk (rapid replay)                 | Continuous, with a small held-back suffix              |
+| Mid-stream blocks        | Not applicable                       | Block fires before any content reaches client | Block can fire after some safe text has reached client |
+| Client compatibility     | Any HTTP client                      | SSE-capable client required                   | SSE-capable client required                            |
+| Best for                 | Short responses, simple integrations | Long responses where UX needs all-or-nothing  | Long responses where time-to-first-token matters       |
