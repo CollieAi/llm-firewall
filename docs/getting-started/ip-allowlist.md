@@ -1,14 +1,17 @@
 ---
+description: >-
+  How the CollieAi IP allowlist works — restrict API key usage to specific IPs
+  or CIDR ranges for access control in enterprise environments.
 icon: octagon-check
 ---
 
 # IP allowlist
 
-Restrict API key usage to specific IP addresses. When an allowlist is configured, only requests from listed IPs or CIDR ranges can use your API keys. Requests from unlisted IPs receive a `403 Forbidden` response.
+The CollieAi IP allowlist restricts API key usage to specific IP addresses for access control. When an allowlist is configured, only requests from listed IPs or CIDR ranges can use your API keys, and requests from unlisted IPs receive a `403 Forbidden` response.
 
 This is useful for enterprise environments where API access should be limited to office networks, datacenters, or specific server IPs.
 
-## How it works
+## How does the IP allowlist work?
 
 * The allowlist is **per account** -- it applies to all your projects and API keys.
 * An **empty allowlist** (default) means all IPs are allowed.
@@ -90,7 +93,7 @@ When a request comes from an IP not in the allowlist:
 
 ## Reverse proxy setup
 
-If CollieAI runs behind a reverse proxy or load balancer (Nginx, AWS ALB, Cloudflare), set the `FORWARDED_ALLOW_IPS` environment variable so that CollieAI reads the real client IP from the `X-Forwarded-For` header instead of the proxy's IP.
+If CollieAi runs behind a reverse proxy or load balancer (Nginx, AWS ALB, Cloudflare), set the `FORWARDED_ALLOW_IPS` environment variable so that CollieAi reads the real client IP from the `X-Forwarded-For` header instead of the proxy's IP.
 
 ```bash
 # Trust a specific proxy IP
@@ -107,6 +110,6 @@ Without this setting, the allowlist evaluates the proxy's IP, which will reject 
 
 ## Next steps
 
-* [Authentication](/broken/pages/1845ab390e5ce0610c3639336c3607da0944e5f1) -- sign-in methods and password management.
-* [API Keys](/broken/pages/7feac2acca8bcde057933e84cdddfb8ff4d6f647) -- manage API keys within projects.
-* [Projects](/broken/pages/12493f7755c3bc9f868977b8eb076b8598bb0ddb) -- configure per-project settings like rate limiting.
+* [Authentication](authentication.md) -- sign-in methods and password management.
+* [API Keys](api-keys.md) -- manage API keys within projects.
+* [Projects](../projects-and-policies/projects.md) -- configure per-project settings like rate limiting.
