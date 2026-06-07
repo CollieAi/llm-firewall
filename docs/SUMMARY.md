@@ -4,7 +4,7 @@
 
 ## Getting Started
 
-* [Overview](getting-started/overview.md)
+* [Getting started with CollieAi](getting-started/overview.md)
 * [Quick start](getting-started/quick-start.md)
 * [Authentication](getting-started/authentication.md)
 * [API keys](getting-started/api-keys.md)
