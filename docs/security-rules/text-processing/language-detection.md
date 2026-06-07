@@ -1,6 +1,14 @@
+---
+description: >-
+  How CollieAi language detection filters and routes LLM messages by language —
+  FastText lid.176 across 176 languages, with allowlist/blocklist modes and
+  language context for model routing.
+icon: spell-check
+---
+
 # Language detection
 
-## Overview
+## What is the language detection rule type?
 
 The Language Detection rule type enables filtering messages based on detected language using FastText's lid.176 model. It supports 176 languages and provides both allowlist and blocklist modes.
 
@@ -11,7 +19,16 @@ The Language Detection rule type enables filtering messages based on detected la
 * Routing messages based on language
 * Detecting unexpected language usage
 
-## How It Works
+{% hint style="info" %}
+**Key points**
+
+* Language detection identifies a message's language with FastText lid.176 across 176 languages.
+* Allowlist mode permits only chosen languages; blocklist mode blocks chosen ones — with a configurable confidence threshold.
+* It writes the detected language to a shared context, enabling language-based routing to different ML models.
+* It is fast (\~1–5 ms) and fails open by default, so detection failures don't block traffic unless you choose fail-closed.
+{% endhint %}
+
+## How does language detection work?
 
 {% stepper %}
 {% step %}
@@ -49,7 +66,7 @@ The language detection rule automatically writes detection results to a **shared
 | `language_confidence`      | float  | Detection confidence (0.0-1.0)                  |
 | `language_all_predictions` | list   | All language predictions with confidence scores |
 
-**Example:** A `lightweight_model` rule can read `detected_language` from context to apply different ML models based on message language. See [Lightweight Model - Language-Based Routing](/broken/pages/3e9b6f0ccd43d730db3495e5e81c83c03073006c#language-based-model-routing) for details.
+**Example:** A `lightweight_model` rule can read `detected_language` from context to apply different ML models based on message language. See [Lightweight Model - Language-Based Routing](language-detection.md) for details.
 
 ## Modes
 
@@ -334,7 +351,7 @@ curl -X POST "http://localhost:8000/api/v1/projects/{project_id}/rules/{rule_id}
 
 ## Troubleshooting
 
-### Detection Not Working
+### Why isn't language detection working?
 
 1. Check that the message is longer than `min_length`
 2. Verify FastText is installed: `pip install fasttext-wheel`
@@ -347,13 +364,13 @@ curl -X POST "http://localhost:8000/api/v1/projects/{project_id}/rules/{rule_id}
 
     Expected response shows `"language_detection": {"loaded": true, ...}`
 
-### Too Many False Positives
+### Why are there too many false positives?
 
 1. Increase `threshold` (e.g., 0.5 → 0.7)
 2. Increase `min_length` for short messages
 3. Check if content is mixed-language
 
-### Model Not Loading (Rule Silently Fails Open)
+### Why is the model not loading (rule fails open)?
 
 **Symptom:** Messages in blocked languages pass through without being blocked.
 
@@ -390,7 +407,7 @@ curl -X POST "http://localhost:8000/api/v1/projects/{project_id}/rules/{rule_id}
       https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.ftz
     ```
 
-### Unexpected Language Detection
+### Why is the detected language unexpected?
 
 1. Use the test endpoint to see all predictions
 2. Check confidence scores - low confidence may indicate mixed content
@@ -477,7 +494,7 @@ Downstream `lightweight_model` rules can then use the `languages` configuration 
 }
 ```
 
-See [Lightweight Model - Language-Based Routing](/broken/pages/3e9b6f0ccd43d730db3495e5e81c83c03073006c#language-based-model-routing) for complete configuration examples.
+See [Lightweight Model - Language-Based Routing](language-detection.md) for complete configuration examples.
 
 ### Benefits
 
@@ -485,3 +502,9 @@ See [Lightweight Model - Language-Based Routing](/broken/pages/3e9b6f0ccd43d730d
 2. **Model optimization** - Use the best model for each language
 3. **Performance** - Skip ML inference for languages a model wasn't trained on
 4. **Flexibility** - Easy to add or modify language-specific models
+
+### Frequently asked questions
+
+**Can CollieAi detect and restrict the language of messages?** Yes. CollieAi's language detection rule identifies a message's language across 176 languages using FastText lid.176, and in allowlist or blocklist mode it can permit or block specific languages with a configurable confidence threshold.
+
+**Can I route messages to different models by language?** Yes. Language detection writes the detected language to a shared context, so downstream ML rules can apply language-specific models — for example DeBERTa for English and Sentinel for Russian — without code changes.
