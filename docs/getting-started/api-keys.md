@@ -1,22 +1,26 @@
 ---
+description: >-
+  How CollieAi API keys work — create, use, rotate, and deactivate clai_ keys
+  that   authenticate your application's proxy and Jobs API requests, scoped to
+  one project.
 icon: rectangle-api
 ---
 
 # API keys
 
-API keys authenticate your application when it makes requests to CollieAI's proxy or Jobs API. Every key is prefixed with `clai_` so you can identify CollieAI keys at a glance.
+API keys authenticate your application when it makes requests to CollieAi's proxy or Jobs API. Every key is prefixed with `clai_` so you can identify CollieAi keys at a glance.
 
-## How API Keys Work
+## How do API keys work?
 
 * Each key belongs to **one project**. Requests made with that key are scoped to the project's policies, rules, and provider tokens.
-* The full key is returned **only once**, at creation time. After that, CollieAI stores a hashed version and shows a masked display form (e.g., `clai_AbCd...xYz`).
+* The full key is returned **only once**, at creation time. After that, CollieAi stores a hashed version and shows a masked display form (e.g., `clai_AbCd...xYz`).
 * Keys are passed as a Bearer token in the `Authorization` header.
 
 ## Creating a Key
 
 ### Via the Dashboard
 
-1. Open your project in the CollieAI dashboard.
+1. Open your project in the CollieAi dashboard.
 2. Navigate to **API Keys**.
 3. Click **Create Key**.
 4. Give the key a descriptive name (e.g., `backend-prod`, `staging-test`).
@@ -24,7 +28,7 @@ API keys authenticate your application when it makes requests to CollieAI's prox
 
 ### Via the API
 
-You can also create keys programmatically. See the [API Keys endpoint reference](/broken/pages/fadf262fbeed66951f7d999b908d7aeec843bb53) for details.
+You can also create keys programmatically. See the [API Keys endpoint reference](../api-reference/api-keys.md) for details.
 
 ## Using a Key
 
@@ -34,13 +38,13 @@ Pass the key as a Bearer token in the `Authorization` header:
 Authorization: Bearer clai_your_api_key_here
 ```
 
-With the OpenAI Python SDK:
+With the OpenAI Python SDK or any OpenAI-compatible client:
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
-    api_key="clai_AbCВSs2IjKlMnOpQrStUvWxYz01328901234",
+    api_key="clai_AbCSSs2IjKlMnOpQrStUvWxYz01328901234",
     base_url="https://app.collieai.io/v1",
 )
 ```
@@ -56,7 +60,7 @@ curl https://app.collieai.io/v1/chat/completions \
 
 ## Project Association
 
-Every API key belongs to exactly one project. When a request arrives, CollieAI:
+Every API key belongs to exactly one project. When a request arrives, CollieAi:
 
 1. Looks up the key and verifies it is active and not expired.
 2. Resolves the project the key belongs to.
@@ -65,13 +69,13 @@ Every API key belongs to exactly one project. When a request arrives, CollieAI:
 
 If you need different rule sets for different environments or applications, create separate projects and generate a key for each.
 
-## Best Practices
+## What are the best practices for API keys?
 
 * **Never commit keys to version control.** Use environment variables or a secrets manager instead.
 * **Use descriptive names.** Names like `backend-prod-v2` make it easy to audit which services use which keys.
 * **Rotate keys regularly.** Create a new key, update your application, then deactivate the old one.
 * **Set expiration dates** for keys used in short-lived environments (CI, demos, testing).
-* **One key per service.** If multiple services call CollieAI, give each its own key so you can revoke independently.
+* **One key per service.** If multiple services call CollieAi, give each its own key so you can revoke independently.
 
 ## Deactivating a Key
 
@@ -85,5 +89,5 @@ Deactivated keys are rejected immediately on the next request - no delay. Make s
 
 ## See Also
 
-* [Authentication](/broken/pages/1845ab390e5ce0610c3639336c3607da0944e5f1) -- Overview of all auth methods.
-* [API Reference: API Keys](/broken/pages/fadf262fbeed66951f7d999b908d7aeec843bb53) -- Full endpoint documentation for key management.
+* [Authentication](authentication.md) -- Overview of all auth methods.
+* [API Reference: API Keys](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/api-reference) -- Full endpoint documentation for key management.
