@@ -13,7 +13,7 @@
 
 ## Proxy Integration
 
-* [Overview](proxy-integration/overview.md)
+* [Proxy integration overview](proxy-integration/overview.md)
 * [OpenAI SDK Integration](proxy-integration/openai-sdk-integration.md)
 * [Anthropic SDK Integration](proxy-integration/anthropic-sdk-integration.md)
 * [Streaming](proxy-integration/streaming.md)
