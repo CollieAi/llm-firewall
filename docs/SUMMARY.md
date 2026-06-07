@@ -47,7 +47,7 @@
 
 ## Projects & Policies
 
-* [Overview](projects-and-policies/overview.md)
+* [Projects and policies overview](projects-and-policies/overview.md)
 * [Projects](projects-and-policies/projects.md)
 * [Provider tokens](projects-and-policies/provider-tokens.md)
 * [Dictionaries](projects-and-policies/dictionaries.md)

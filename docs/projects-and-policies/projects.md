@@ -1,14 +1,27 @@
 ---
+description: >-
+  How CollieAi projects isolate workloads — each project has its own API keys,
+  active policy, rate limits, and data retention, so you can run multiple AI
+  apps with separate security configs.
 icon: diagram-project
 ---
 
 # Projects
 
-A project is an isolated context within CollieAI. Each project has its own API keys, settings, and active policy. Use projects to separate workloads -- for example, a production chatbot, a staging environment, and an internal copilot can each be their own project with distinct security configurations.
+A project is an isolated context within CollieAi. Each project has its own API keys, settings, and active policy. Use projects to separate workloads -- for example, a production chatbot, a staging environment, and an internal copilot can each be their own project with distinct security configurations.
+
+{% hint style="info" %}
+**Key points**
+
+* A project is an isolated context in CollieAi with its own API keys, settings, and one active policy.
+* Use projects to separate workloads — for example production, staging, and an internal copilot.
+* Each project sets its own rate limit (RPM) and data retention for logs and request bodies.
+  * Switching a project's active policy takes effect instantly, which enables A/B testing and instant rollback.
+{% endhint %}
 
 ## Creating a project
 
-When you create a project, CollieAI automatically:
+When you create a project, CollieAi automatically:
 
 1. Assigns your **default policy** as the project's active policy. (If you have not starred a default policy, one is created for you.)
 2. Creates an **API key** for the project so you can start sending requests immediately.
@@ -49,7 +62,7 @@ The full API key value is only shown at creation time. Store it securely -- you 
 
 ### filter\_all\_messages
 
-Controls how CollieAI processes multi-turn conversations:
+Controls how CollieAi processes multi-turn conversations:
 
 | Value            | Behavior                                                                                              |
 | ---------------- | ----------------------------------------------------------------------------------------------------- |
@@ -137,7 +150,7 @@ Bodies are higher-sensitivity evidence; metadata is the audit trail. The split l
 
 The invariant `body_retention_hours ≤ log_retention_days × 24` is enforced. Changes apply to **new logs only** — existing rows keep their original expiry.
 
-See [Data Retention](/broken/pages/66aeae909bf1afe8929360e08887f1633cc6c2c9) for full details, recommended values by use case, and special-case behavior.
+See [Data Retention](data-retention.md) for full details, recommended values by use case, and special-case behavior.
 
 ## Active policy
 
@@ -158,7 +171,7 @@ This is useful for:
 * **Instant rollback** -- if a new policy causes issues, switch back to the previous one in a single API call.
 * **Environment progression** -- use a lenient policy in staging and a strict one in production.
 
-See [Policies](/broken/pages/5fca45ccde3be5c33dc8274cd8937132fb9d4489) for details on creating and managing policies.
+See [Policies](policies.md) for details on creating and managing policies.
 
 ## Deleting a project
 
@@ -230,4 +243,10 @@ curl -X DELETE https://app.collieai.io/api/v1/projects/{project_id} \
 * [Policies](policies.md) -- create and manage the rule collections assigned to projects.
 * [API Keys](../getting-started/api-keys.md) -- manage API keys within a project.
 * [Provider Tokens](provider-tokens.md) -- configure the LLM provider keys used by the proxy.
-* [Security Rules](/broken/pages/IFQLAOgCVBuArNftVIWh) -- learn about the 9 rule types available in policies.
+* [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) -- learn about the 9 rule types available in policies.
+
+### Frequently asked questions
+
+**How do I run multiple AI apps with different security settings in CollieAi?** Create a separate CollieAi project for each app. Each project is isolated with its own API keys, active policy, rate limit, and data retention, so a production chatbot, a staging environment, and an internal copilot can each have distinct security configurations.
+
+**What happens to my policies and rules if I delete a project?** Deleting a project is a hard delete that removes the project and its API keys, but the linked policies and rules are preserved and unlinked, so they remain available for use on other projects. Provider tokens are user-scoped and unaffected.
