@@ -9,7 +9,7 @@
 * [Authentication](getting-started/authentication.md)
 * [API keys](getting-started/api-keys.md)
 * [IP allowlist](getting-started/ip-allowlist.md)
-* [Plans and billing](getting-started/plans-and-billing.md)
+* [CollieAi pricing and plans](getting-started/plans-and-billing.md)
 
 ## Proxy Integration
 
