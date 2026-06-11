@@ -4,17 +4,17 @@
   </a>
 </p>
 
-<h1 align="center">LLM Firewall — AI Security Proxy</h1>
+<h1 align="center">LLM Firewall — AI Security Proxy & Guardrails for GPT, Claude, Gemini</h1>
 
 <h4 align="center">
-  Drop-in OpenAI proxy that masks PII, blocks prompt injections &amp; logs every LLM call.<br/>
-  One line change. Nine rule types. Works with any provider.
+Drop-in, provider-agnostic AI guardrails proxy that masks PII, blocks prompt injection & jailbreaks, and logs every LLM call. 
+One line change. Works with OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, AWS Bedrock, and self-hosted models.
 </h4>
 
 <p align="center">
   <a href="https://collieai.io"><img src="https://img.shields.io/badge/website-collieai.io-blue" alt="CollieAi Website" /></a>
   <a href="https://docs.collieai.io"><img src="https://img.shields.io/badge/docs-docs.collieai.io-green" alt="Documentation" /></a>
-  <a href="https://app.collieai.io"><img src="https://img.shields.io/badge/free_tier-15K_calls/mo-brightgreen" alt="Free Tier" /></a>
+  <a href="https://app.collieai.io"><img src="https://img.shields.io/badge/free_tier-20K_calls/month-brightgreen" alt="Free Tier" /></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@ You're building with GPT-4, Claude, Gemini — but every API call is a potential
 
 <!-- GIF: dashboard, policy engine, real-time logs -->
 
-<img width="1000" height="561" alt="github-4" src="https://github.com/user-attachments/assets/de356d6e-6483-4d30-aa80-d8c36482816e" />
+<img width="1000" height="561" alt="CollieAi LLM firewall blocking a prompt injection attack in real time — demo" src="https://github.com/user-attachments/assets/de356d6e-6483-4d30-aa80-d8c36482816e" />
 
 
 
@@ -64,7 +64,7 @@ Sign up for a free API key and change your `base_url`. No SDK required, no archi
 base_url = "https://app.collieai.io/v1"
 api_key  = "clai_your_project_key"
 
-# Free: 15,000 calls/month
+# Free: 20,000 calls/month
 ```
 
 </td>
@@ -123,16 +123,27 @@ export OPENAI_API_KEY=clai_your_project_key
 # Your existing code works unchanged
 ```
 
-**[Get Started Free — 15,000 calls/month, no credit card](https://app.collieai.io)**
+**[Get Started Free — 20,000 calls/month, no credit card](https://app.collieai.io)**
 
 ## How It Works
 
-<img width="1341" height="548" alt="github-2" src="https://github.com/user-attachments/assets/cf40c56e-a7d9-4255-9a21-a3c30e7a06cf" />
+<img width="1341" height="548" alt="How CollieAi AI firewall works: security proxy between your app and the LLM provider" src="https://github.com/user-attachments/assets/cf40c56e-a7d9-4255-9a21-a3c30e7a06cf" />
 
 
-## Security Rules — Fully Configurable
+## AI Guardrails & Security Rules — Fully Configurable
 
 Select the threats you want to protect against. Each rule category is independently configurable — choose enforcement mode, set thresholds, add custom patterns, and apply rules to input prompts, output responses, or both. Start in **monitor** mode to observe, switch to **enforce** when ready.
+
+## OWASP LLM Top 10 Coverage
+
+LLM Firewall addresses the most critical risks from the OWASP Top 10 for LLM Applications:
+
+| OWASP Risk | How CollieAi protects |
+|---|---|
+| LLM01: Prompt Injection | ML classifier + dictionaries + optional LLM-based analysis |
+| LLM02: Sensitive Information Disclosure | PII detection & masking, secrets & API key filtering |
+| LLM05: Improper Output Handling | Output filtering with independent policies |
+| LLM09: Misinformation | User satisfaction & sentiment monitoring |
 
 ### Prompt Injection <kbd>#1 LLM threat</kbd>
 
@@ -203,6 +214,44 @@ Full documentation at **[docs.collieai.io](https://docs.collieai.io)**
     <img src="https://img.shields.io/badge/Get_Started_Free-→-brightgreen?style=for-the-badge" alt="Get Started Free" />
   </a>
 </p>
+
+## FAQ
+
+### What is an LLM firewall?
+An LLM firewall is a security layer that sits between your application and LLM providers, inspecting every prompt and response in real time. It blocks prompt injection and jailbreak attempts, masks PII and secrets, and filters unsafe content before it reaches the model — or your users.
+
+### What is the difference between an LLM firewall and AI guardrails?
+AI guardrails are the individual rules (block prompt injection, redact PII, filter profanity). An LLM firewall is the enforcement layer that runs those guardrails on live traffic. CollieAi combines both: a configurable guardrail policy engine deployed as a transparent proxy — no SDK or framework integration required.
+
+### How does CollieAi differ from guardrails libraries like LLM Guard or NeMo Guardrails?
+Libraries run inside your application code — you install, configure, and maintain them per service. CollieAi works at the network level: change your `base_url` and every app, language, and framework is protected by centrally managed policies, with a shared audit trail and dashboard.
+
+### How does prompt injection detection work?
+Three layers: dictionary and pattern matching, a lightweight ML classifier (10–50 ms) that catches jailbreaks, role hijacking, and instruction override, and optional LLM-based analysis for sophisticated or paraphrased attacks that evade pattern matching.
+
+### Can it detect indirect prompt injection in RAG pipelines?
+Yes. Malicious instructions hidden in retrieved documents, web pages, or file content pass through the same inspection pipeline as user input, including base64-decoded hidden payloads.
+
+### Does it work with AI agents and agentic workflows?
+Yes. Any agent framework that calls an OpenAI-compatible endpoint — LangChain, LlamaIndex, CrewAI, custom agents — is secured by changing the base URL. Both the agent's prompts and the model's responses are filtered.
+
+### What PII can it redact?
+Credit cards (Luhn-validated), IBANs (MOD-97), SSNs and national IDs for 8 countries, emails, phone numbers, plus custom regex patterns and dictionary lists for names or org-specific terms. Each rule can mask, block, or just monitor.
+
+### Does it cover the OWASP Top 10 for LLM Applications?
+Yes — including LLM01 Prompt Injection, LLM02 Sensitive Information Disclosure, and LLM05 Improper Output Handling. See the [OWASP coverage table](#owasp-llm-top-10-coverage) above.
+
+### Which LLM providers are supported?
+CollieAi is provider-agnostic: OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Azure OpenAI, AWS Bedrock, and self-hosted models (vLLM, Ollama, LocalAI). OpenAI-compatible API plus Anthropic's native Messages API.
+
+### How much latency does it add?
+10–50 ms for ML-based detection on the free tier, ≤20 ms on paid plans. Pattern and checksum rules run faster. Full SSE streaming is supported.
+
+### Can I self-host the LLM firewall?
+Yes — Docker Compose deployment with local ML models is documented in the [self-hosting guide](https://docs.collieai.io/self-hosting). Enterprise plans add on-premise deployment, SSO (OIDC/SAML), and SIEM integration.
+
+### Is there a free tier?
+Yes — 20,000 API calls/month, free forever, no credit card. Includes the full guardrail stack: prompt injection detection, PII masking, secrets filtering, and AI content moderation in 23 languages.
 
 <p align="center">
   <a href="https://collieai.io">Website</a> · 
