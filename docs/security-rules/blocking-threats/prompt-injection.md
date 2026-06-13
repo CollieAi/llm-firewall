@@ -406,21 +406,10 @@ The lightweight model rule supports **language-based routing**, allowing you to 
 3. If the detected language matches the configured `languages` list, the rule processes the message
 4. If the language doesn't match, the rule skips to the next rule in the pipeline
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    FilteringContext                          │
-│  {                                                           │
-│    "detected_language": "en",                                │
-│    "language_confidence": 0.95                               │
-│  }                                                           │
-└─────────────────────────────────────────────────────────────┘
-        ▲                                    │
-        │ writes                             │ reads
-        │                                    ▼
-┌───────────────────┐              ┌─────────────────────────┐
-│ language_detection │ ──────────► │   lightweight_model      │
-│      rule          │   context   │        rule              │
-└───────────────────┘              └─────────────────────────┘
+```mermaid
+flowchart LR
+    LD["language_detection rule"] -->|writes context| CTX["FilteringContext<br/>detected_language, language_confidence"]
+    CTX -->|reads context| LM["lightweight_model rule"]
 ```
 
 ### Configuration Options

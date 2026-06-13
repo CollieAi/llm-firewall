@@ -63,19 +63,17 @@ Dictionaries are word lists used by [dictionary matching](../security-rules/dete
 
 ## How do projects and policies relate?
 
-```
-User
- ├── Projects
- │    ├── API Keys (project-scoped)
- │    └── Active Policy ─┐
- │                       │  (references)
- ├── Policies ───────────┘
- │    └── Rules
- │
- ├── Provider Tokens (user-scoped)
- │
- └── Dictionaries (user-scoped)
-      └── Used by dictionary matching rules
+```mermaid
+flowchart TD
+    User["User"] --> Projects["Projects"]
+    User --> Policies["Policies"]
+    User --> PT["Provider Tokens (user-scoped)"]
+    User --> Dict["Dictionaries (user-scoped)"]
+    Projects --> Keys["API Keys (project-scoped)"]
+    Projects --> Active["Active Policy"]
+    Active -. references .-> Policies
+    Policies --> Rules["Rules"]
+    Dict --> DM["Used by dictionary matching rules"]
 ```
 
 Key relationships:

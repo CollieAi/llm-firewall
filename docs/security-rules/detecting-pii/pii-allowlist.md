@@ -23,16 +23,13 @@ trigger a `block`).
 
 ## How it works
 
-```
-your app ──► hash known-good values with your project secret
-             attach them on the X-CollieAi-PII-Allowlist header
-                    │
-                    ▼
-CollieAi detects PII in the OUTPUT
-   for each detected value:
-     hash it with the same project secret
-     on the allowlist? ──► pass through unchanged
-     not on the allowlist? ──► mask / block as usual
+```mermaid
+flowchart TD
+    A["Your app — hash known-good values with your project secret"] --> B["Attach them on the X-CollieAi-PII-Allowlist header"]
+    B --> C["CollieAi detects PII in the output"]
+    C --> D{"Hash on the allowlist?"}
+    D -->|yes| E["Pass through unchanged"]
+    D -->|no| F["Mask / block as usual"]
 ```
 
 Suppression runs on the **output** only. If every detected value in a message

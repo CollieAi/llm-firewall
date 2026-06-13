@@ -41,55 +41,32 @@ Async Jobs support three modes depending on which fields you include in the requ
 
 This is the most common pattern when you need to filter both user input and LLM output.
 
-```
-Your App                        CollieAi                        Your LLM
-   |                               |                               |
-   |  1. POST /v1/jobs             |                               |
-   |     message_input + webhook   |                               |
-   |  ---------------------------> |                               |
-   |                               |                               |
-   |  <-- 202 Accepted             |                               |
-   |     job_id + webhook_secret   |                               |
-   |                               |                               |
-   |  2. Webhook: inbound_complete |                               |
-   |  <--------------------------- |                               |
-   |     (filtered user content)   |                               |
-   |                               |                               |
-   |  3. Call LLM with filtered content                            |
-   |  ----------------------------------------------------------> |
-   |                                                               |
-   |  <-- LLM response                                            |
-   |  <---------------------------------------------------------- |
-   |                               |                               |
-   |  4. POST /v1/jobs/{id}/response                               |
-   |     llm_response              |                               |
-   |  ---------------------------> |                               |
-   |                               |                               |
-   |  5. Webhook: outbound_complete|                               |
-   |  <--------------------------- |                               |
-   |     (filtered LLM response)   |                               |
-   |                               |                               |
+```mermaid
+sequenceDiagram
+    participant App as Your App
+    participant Collie as CollieAi
+    participant LLM as Your LLM
+    App->>Collie: 1. POST /v1/jobs (message_input + webhook)
+    Collie-->>App: 202 Accepted (job_id + webhook_secret)
+    Collie-->>App: 2. Webhook inbound_complete (filtered user content)
+    App->>LLM: 3. Call LLM with filtered content
+    LLM-->>App: LLM response
+    App->>Collie: 4. POST /v1/jobs/{id}/response (llm_response)
+    Collie-->>App: 5. Webhook outbound_complete (filtered LLM response)
 ```
 
 ### Combined Mode (Single Request)
 
 When you already have both the user message and the AI response (for example, logging or post-processing), you can filter both in a single request.
 
-```
-Your App                        CollieAi
-   |                               |
-   |  POST /v1/jobs                |
-   |  message_input + message_output + webhook
-   |  ---------------------------> |
-   |                               |
-   |  <-- 202 Accepted             |
-   |                               |
-   |  Webhook: inbound_complete    |
-   |  <--------------------------- |
-   |                               |
-   |  Webhook: outbound_complete   |
-   |  <--------------------------- |
-   |                               |
+```mermaid
+sequenceDiagram
+    participant App as Your App
+    participant Collie as CollieAi
+    App->>Collie: POST /v1/jobs (message_input + message_output + webhook)
+    Collie-->>App: 202 Accepted
+    Collie-->>App: Webhook inbound_complete
+    Collie-->>App: Webhook outbound_complete
 ```
 
 Webhooks are always delivered in order: input first, then output.

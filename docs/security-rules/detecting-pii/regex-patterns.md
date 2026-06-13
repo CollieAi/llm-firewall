@@ -31,18 +31,13 @@ The Regex rule type enables pattern matching using **Python regular expressions*
 
 ## How do regex rules work?
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Input Message  │ ──▶ │  Regex Match    │ ──▶ │  Replace All    │
-│                 │     │  (re.search)    │     │  (re.sub)       │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌─────────────────┐
-                        │ Match Found?    │
-                        │ Yes → Mask/Block│
-                        │ No  → Pass      │
-                        └─────────────────┘
+```mermaid
+flowchart LR
+    A["Input Message"] --> B["Regex Match (re.search)"]
+    B --> C["Replace All (re.sub)"]
+    B --> D{"Match found?"}
+    D -->|yes| E["Mask / block"]
+    D -->|no| F["Pass"]
 ```
 
 {% stepper %}
