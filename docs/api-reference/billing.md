@@ -23,7 +23,7 @@ The hosted product offers two plans, Free and Growth. Enterprise is delivered as
 | **Free**   | 20,000/month           | 1         | Automatic on signup     |
 | **Growth** | 250,000/month included | Unlimited | Stripe Checkout (below) |
 
-Enterprise customers run on a dedicated deployment of CollieAi with the hosted plan limits disabled. The endpoints documented here apply to the hosted product only. [Contact us](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/support) to discuss Enterprise.
+Enterprise customers run on a dedicated deployment of CollieAi with the hosted plan limits disabled. The endpoints documented here apply to the hosted product only. [Contact us](../support/overview.md) to discuss Enterprise.
 
 ## Stripe Status Mapping
 
@@ -178,4 +178,4 @@ Each event ID is tracked in Redis with a 48-hour TTL. Duplicate deliveries are a
 
 ## Admin Plan Management
 
-Admins can manually change a user's plan via `PATCH /api/v1/admin/users/{user_id}` with the `plan` field (`free` or `growth`). See [Admin API Reference](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/api-reference) for details. This is used for manual overrides — for example, comping a customer to Growth-level limits without going through Stripe Checkout.
+Admins can manually change a user's plan via `PATCH /api/v1/admin/users/{user_id}` with the `plan` field (`free` or `growth`). See [Admin API Reference](./overview.md) for details. This is used for manual overrides — for example, comping a customer to Growth-level limits without going through Stripe Checkout.

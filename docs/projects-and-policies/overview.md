@@ -35,7 +35,7 @@ The **Free plan** includes 1 project. Upgrade to **Growth** for unlimited projec
 
 ### Policies
 
-A policy is a named collection of [security rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules). Policies are independent from projects -- you can create, edit, and delete policies without any project existing. A single policy can be shared across multiple projects.
+A policy is a named collection of [security rules](../security-rules/overview.md). Policies are independent from projects -- you can create, edit, and delete policies without any project existing. A single policy can be shared across multiple projects.
 
 Each policy has an [enforcement mode](../security-rules/enforcement-mode.md) (`enforce` or `monitor`) that controls whether matched rules act on traffic or only log.
 

@@ -64,7 +64,7 @@ Policies contain the security rules that filter your traffic.
 | Decision  | Mask                                             |
 | Pattern   | `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}` |
 
-See [Policies](../projects-and-policies/policies.md) and [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) for more details.
+See [Policies](../projects-and-policies/policies.md) and [Security Rules](../security-rules/overview.md) for more details.
 {% endstep %}
 
 {% step %}
@@ -139,10 +139,10 @@ CollieAi intercepts the request, masks the email address before it reaches OpenA
 
 ## Next Steps
 
-* [Proxy Integration](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/proxy-integration) -- Streaming, error handling, and advanced SDK usage.
-* [Async Jobs](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/async-jobs) -- Submit requests and receive results via webhooks.
-* [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) -- Explore every rule type: PII detection, prompt injection blocking, URL filtering, and more.
-* [Monitoring](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/monitoring) -- View logs, analytics, and configure alerts.
+* [Proxy Integration](../proxy-integration/overview.md) -- Streaming, error handling, and advanced SDK usage.
+* [Async Jobs](../async-jobs/overview.md) -- Submit requests and receive results via webhooks.
+* [Security Rules](../security-rules/overview.md) -- Explore every rule type: PII detection, prompt injection blocking, URL filtering, and more.
+* [Monitoring](../monitoring/overview.md) -- View logs, analytics, and configure alerts.
 
 ### Frequently asked questions
 

@@ -69,7 +69,7 @@ When the `PROVIDER_TOKEN_ENCRYPTION_KEY` environment variable is set, CollieAi e
 | `PROVIDER_TOKEN_ENCRYPTION_KEY` is not set | Tokens are stored in plaintext. Suitable for local development only. |
 
 {% hint style="info" %}
-**Recommendation:** Always set `PROVIDER_TOKEN_ENCRYPTION_KEY` in production environments. See [Self-Hosting](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/self-hosting) for configuration details.
+**Recommendation:** Always set `PROVIDER_TOKEN_ENCRYPTION_KEY` in production environments. See [Self-Hosting](../self-hosting/overview.md) for configuration details.
 {% endhint %}
 
 ## Supported providers
@@ -159,8 +159,8 @@ curl -X DELETE https://app.collieai.io/api/v1/tokens/{token_id} \
 ## Next steps
 
 * [Projects](projects.md) -- the environments that use provider tokens for proxying.
-* [Proxy Integration](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/proxy-integration) -- how requests flow through CollieAi to the LLM.
-* [Self-Hosting](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/self-hosting) -- configure encryption and other production settings.
+* [Proxy Integration](../proxy-integration/overview.md) -- how requests flow through CollieAi to the LLM.
+* [Self-Hosting](../self-hosting/overview.md) -- configure encryption and other production settings.
 
 ### Frequently asked questions
 

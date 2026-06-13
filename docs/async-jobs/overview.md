@@ -8,7 +8,7 @@ icon: arrows-repeat
 
 # Async Jobs overview
 
-CollieAi Async Jobs provide fully asynchronous message filtering with webhook delivery. Unlike the [drop-in proxy](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/proxy-integration), which sits between your application and your LLM provider, the Jobs API lets you **bring your own model** and just filter messages through CollieAi.
+CollieAi Async Jobs provide fully asynchronous message filtering with webhook delivery. Unlike the [drop-in proxy](../proxy-integration/overview.md), which sits between your application and your LLM provider, the Jobs API lets you **bring your own model** and just filter messages through CollieAi.
 
 CollieAi does **not** call LLMs on your behalf in this mode. You send content to be filtered, receive the filtered result via webhook, call your own LLM, and optionally send the LLM response back for output filtering.
 
