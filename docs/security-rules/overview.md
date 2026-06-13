@@ -23,12 +23,12 @@ Security rules are the core of CollieAi's guardrails. A security rule defines wh
 
 Every request passes through a multi-stage pipeline:
 
-```
-1. Authenticate    -->  Validate the API key and load the project's policy
-2. Input filter    -->  Apply input rules to the user's message
-3. Proxy / Process -->  Forward the (filtered) request to the LLM provider
-4. Output filter   -->  Apply output rules to the model's response
-5. Return          -->  Send the filtered response back to your application
+```mermaid
+flowchart TD
+    A["1. Authenticate — validate the API key, load the policy"] --> B["2. Input filter — apply input rules to the user message"]
+    B --> C["3. Proxy / Process — forward the filtered request to the LLM"]
+    C --> D["4. Output filter — apply output rules to the response"]
+    D --> E["5. Return — send the filtered response to your app"]
 ```
 
 If any rule with a **block** decision triggers during the input stage, the request is rejected immediately and never reaches the provider.

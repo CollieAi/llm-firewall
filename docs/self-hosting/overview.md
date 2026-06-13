@@ -41,32 +41,13 @@ CollieAI consists of five core components:
 
 ### Components Diagram
 
-```
-                    ┌─────────────────────┐
-                    │       Client        │
-                    └─────────┬───────────┘
-                              │
-                              ▼
-                    ┌─────────────────────┐
-                    │   FastAPI API        │
-                    │   (uvicorn)          │
-                    └──┬───────┬────────┬──┘
-                       │       │        │
-              ┌────────┘       │        └────────┐
-              ▼                ▼                  ▼
-     ┌──────────────┐  ┌────────────┐   ┌──────────────┐
-     │ PostgreSQL   │  │   Redis    │   │  ClickHouse  │
-     │ (primary DB) │  │ (cache +   │   │ (analytics/  │
-     │              │  │  queues)   │   │  logs)       │
-     └──────────────┘  └─────┬──────┘   └──────────────┘
-                             │
-                             ▼
-                    ┌─────────────────────┐
-                    │   Background Worker │
-                    │   • Filtering tasks │
-                    │   • Webhook delivery│
-                    │   • Alert evaluation│
-                    └─────────────────────┘
+```mermaid
+flowchart TD
+    Client(["Client"]) --> API["FastAPI API (uvicorn)"]
+    API --> PG[("PostgreSQL<br/>primary DB")]
+    API --> Redis[("Redis<br/>cache + queues")]
+    API --> CH[("ClickHouse<br/>analytics / logs")]
+    Redis --> Worker["Background Worker<br/>Filtering · Webhooks · Alerts"]
 ```
 
 The API server handles all HTTP traffic: proxy requests, REST endpoints, and the frontend dashboard. When an async job is created, the API enqueues work into Redis. The background worker picks up jobs from Redis queues, runs security filtering, delivers webhooks, and evaluates alert conditions.

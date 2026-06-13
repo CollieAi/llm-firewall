@@ -12,37 +12,24 @@ Every job moves through a series of statuses from creation to completion. Unders
 
 ## Status Flow
 
-```
-                    +--------------------+
-                    | processing_inbound |
-                    +---------+----------+
-                              |
-                    +---------+---------+
-                    |                   |
-             +------v------+   +--------v---------+
-             |   inbound   |   |    awaiting       |
-             |   _blocked  |   |    _response      |
-             |  (terminal) |   +--------+----------+
-             +-------------+            |
-                               +--------v-----------+
-                               | processing_outbound |
-                               +--------+-----------+
-                                        |
-                               +--------+---------+
-                               |                  |
-                         +-----v------+   +-------v-------+
-                         |  outbound  |   |  delivering   |
-                         |  _blocked  |   +-------+-------+
-                         | (terminal) |           |
-                         +------------+  +--------+--------+
-                                         |                 |
-                                   +-----v-----+   +------v------+
-                                   |  completed  |   |   failed    |
-                                   | (terminal) |   |  (terminal) |
-                                   +-----------+   +-------------+
-
-            Any status ---------------------------> expired (terminal)
-                             (on timeout)
+```mermaid
+stateDiagram-v2
+    [*] --> processing_inbound
+    processing_inbound --> awaiting_response
+    processing_inbound --> inbound_blocked
+    awaiting_response --> processing_outbound
+    processing_outbound --> delivering
+    processing_outbound --> outbound_blocked
+    delivering --> completed
+    delivering --> failed
+    inbound_blocked --> [*]
+    outbound_blocked --> [*]
+    completed --> [*]
+    failed --> [*]
+    note right of awaiting_response
+        Any non-terminal status
+        becomes expired on timeout
+    end note
 ```
 
 {% hint style="info" %}

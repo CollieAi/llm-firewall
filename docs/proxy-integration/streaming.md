@@ -143,23 +143,14 @@ print()  # Newline after the stream completes
 
 When your project's mode is `auto` or `incremental` AND every active output rule supports streaming, CollieAi runs rules on a **sliding window** as text arrives:
 
-```
-Client request
-      │
-      ▼
-Input filtering (applied before the stream starts)
-      │
-      ▼
-Upstream model (streams tokens) ──▶ CollieAi sliding-window engine
-                                              │
-                                              ▼
-                                  ┌───────────┴───────────┐
-                                  ▼                       ▼
-                          Safe stable prefix        Unstable suffix
-                              (released)             (held back)
-                                  │
-                                  ▼
-                              Client
+```mermaid
+flowchart TD
+    A["Client request"] --> B["Input filtering (before the stream starts)"]
+    B --> C["Upstream model streams tokens"]
+    C --> D["CollieAi sliding-window engine"]
+    D --> E["Safe stable prefix (released)"]
+    D --> F["Unstable suffix (held back)"]
+    E --> G["Client"]
 ```
 
 The engine holds back a small suffix (the "unstable window") so rules can detect patterns that straddle chunk boundaries. The held-back suffix size depends on the rule type — typically 64–512 characters. As the window grows past the unstable region, safe text is released to your client.
@@ -173,27 +164,18 @@ If a rule fires on the stable window:
 
 When your project's mode is `buffered`, OR when a rule in the policy can't be evaluated on a streaming window (e.g. LLM-detection rules need the full text), CollieAi accumulates the upstream response, applies rules to the complete text, then replays the result:
 
-```
-Client request
-      │
-      ▼
-Input filtering (applied before the stream starts)
-      │
-      ▼
-Upstream model (streams tokens) ──▶ CollieAi buffers full response
-                                              │
-                                              ▼
-                                       Apply output rules
-                                              │
-                                    ┌─────────┼─────────┐
-                                    ▼         ▼         ▼
-                                 Allowed    Masked    Blocked
-                                    │         │         │
-                                    ▼         ▼         ▼
-                               Re-stream  Re-stream  Send error
-                               original   with       chunk and
-                               chunks     masked     close stream
-                                          content
+```mermaid
+flowchart TD
+    A["Client request"] --> B["Input filtering (before the stream starts)"]
+    B --> C["Upstream model streams tokens"]
+    C --> D["CollieAi buffers full response"]
+    D --> E["Apply output rules"]
+    E --> F["Allowed"]
+    E --> G["Masked"]
+    E --> H["Blocked"]
+    F --> F2["Re-stream original chunks"]
+    G --> G2["Re-stream with masked content"]
+    H --> H2["Send error chunk and close stream"]
 ```
 
 In buffered mode the first token reaches your client **after** the full upstream generation and rule evaluation, so first-token latency equals the upstream generation time plus the filter time. Once filtering is complete, the buffered chunks are delivered rapidly.

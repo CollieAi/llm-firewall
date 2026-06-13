@@ -23,39 +23,29 @@ This is the pattern to use when **the** [**drop-in proxy**](../proxy-integration
 
 ## Architecture
 
-```
-Your end user      Your backend          Your model                CollieAi
-     |                  |                    |                          |
-     |  HTTP request    |                    |                          |
-     |  -------------> |                    |                          |
-     |                  |  POST /v1/jobs (create the job)              |
-     |                  |  ------------------------------------------> |
-     |                  |  <-- 202 {job_id, ...}                       |
-     |                  |                    |                          |
-     |  SSE subscribe   |                    |                          |
-     |  -------------> | (proxies to)        |                          |
-     |                  |  GET /v1/jobs/{id}/stream                    |
-     |                  |  ------------------------------------------> |
-     |                  |                    |                          |
-     |                  |  start streaming   |                          |
-     |                  |  ----------------> |                          |
-     |                  |                    |                          |
-     |                  |  <-- chunk 0       |                          |
-     |                  |  POST /chunks {sequence:0, content:"..."}    |
-     |                  |  ------------------------------------------> |
-     |                  |  <-- {emits:[{content:"safe text..."}], ...} |
-     |                  |                                              |
-     |                  |               (SSE emits "safe text" event)  |
-     |  <-- SSE event   | (proxied from CollieAi)                      |
-     |                  |  <-- chunk 1                                 |
-     |                  |  POST /chunks {sequence:1, content:"..."}    |
-     |                  |  ------------------------------------------> |
-     |                  |              ...continues...                 |
-     |                  |  <-- final chunk                             |
-     |                  |  POST /chunks {sequence:N, is_final:true}    |
-     |                  |  ------------------------------------------> |
-     |                  |  <-- {emits:[{final:true}], finished:true}   |
-     |                  |               (SSE end event)                |
+```mermaid
+sequenceDiagram
+    participant U as Your end user
+    participant B as Your backend
+    participant M as Your model
+    participant C as CollieAi
+    U->>B: HTTP request
+    B->>C: POST /v1/jobs (create the job)
+    C-->>B: 202 (job_id)
+    U->>B: SSE subscribe
+    B->>C: GET /v1/jobs/{id}/stream
+    B->>M: start streaming
+    M-->>B: chunk 0
+    B->>C: POST /chunks (sequence 0, content)
+    C-->>B: emits safe text
+    C-->>U: SSE event (safe text)
+    M-->>B: chunk 1
+    B->>C: POST /chunks (sequence 1, content)
+    Note over B,C: ...continues...
+    M-->>B: final chunk
+    B->>C: POST /chunks (sequence N, is_final true)
+    C-->>B: emits final, finished true
+    C-->>U: SSE end event
 ```
 
 You always have two delivery paths to the end user:
