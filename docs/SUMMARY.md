@@ -33,6 +33,15 @@
 * [Node SDK](sdks/node-sdk.md)
 * [.NET SDK](sdks/dotnet-sdk.md)
 
+## Projects & Policies
+
+* [Projects and policies overview](projects-and-policies/overview.md)
+* [Projects](projects-and-policies/projects.md)
+* [Provider tokens](projects-and-policies/provider-tokens.md)
+* [Dictionaries](projects-and-policies/dictionaries.md)
+* [Policies](projects-and-policies/policies.md)
+* [Data retention](projects-and-policies/data-retention.md)
+
 ## Security Rules
 
 * [Security rules overview](security-rules/overview.md)
@@ -52,15 +61,6 @@
   * [Normalization](security-rules/text-processing/normalization.md)
   * [Language detection](security-rules/text-processing/language-detection.md)
 
-## Projects & Policies
-
-* [Projects and policies overview](projects-and-policies/overview.md)
-* [Projects](projects-and-policies/projects.md)
-* [Provider tokens](projects-and-policies/provider-tokens.md)
-* [Dictionaries](projects-and-policies/dictionaries.md)
-* [Policies](projects-and-policies/policies.md)
-* [Data retention](projects-and-policies/data-retention.md)
-
 ## Monitoring
 
 * [Monitoring overview](monitoring/overview.md)
@@ -68,16 +68,16 @@
 * [Analytics](monitoring/analytics.md)
 * [Alerts](monitoring/alerts.md)
 
+## Self Hosting
+
+* [Self-hosting overview](self-hosting/overview.md)
+* [Local development](self-hosting/local-development.md)
+
 ## Support
 
 * [Support overview](support/overview.md)
 * [Creating tickets](support/creating-tickets.md)
 * [Managing tickets (admin)](support/managing-tickets.md)
-
-## Self Hosting
-
-* [Self-hosting overview](self-hosting/overview.md)
-* [Local development](self-hosting/local-development.md)
 
 ## API Reference
 
