@@ -8,7 +8,7 @@ icon: building-shield
 
 # Policies
 
-A policy is a named collection of [security rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules). Policies are the central organizing unit in CollieAi — they define what to filter, how to filter it, and whether to enforce or monitor.
+A policy is a named collection of [security rules](../security-rules/overview.md). Policies are the central organizing unit in CollieAi — they define what to filter, how to filter it, and whether to enforce or monitor.
 
 {% hint style="info" %}
 **Key points**
@@ -247,7 +247,7 @@ New projects automatically get `pii-masking-standard` (the default). High-securi
 
 ## Next steps
 
-* [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) — learn about the 9 rule types you can add to a policy.
+* [Security Rules](../security-rules/overview.md) — learn about the 9 rule types you can add to a policy.
 * [Enforcement Mode](../security-rules/enforcement-mode.md) — monitor vs. enforce and the precedence table.
 * [Projects](projects.md) — manage the environments that use your policies.
 * [Dictionaries](dictionaries.md) — word lists used by dictionary matching rules.

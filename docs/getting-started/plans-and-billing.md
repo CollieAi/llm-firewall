@@ -30,7 +30,7 @@ CollieAi offers three plans — Free, Growth at $49/month, and custom Enterprise
 | **Security rules**        | All types                                                                    |
 | **Dashboard & logs**      | Included                                                                     |
 | **Async jobs & webhooks** | Included                                                                     |
-| **Support**               | [Feedback & Support](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/support) |
+| **Support**               | [Feedback & Support](../support/overview.md) |
 
 The Free plan is designed for **evaluation and prototyping**. You get full access to every filtering feature - regex, dictionary matching, structured ID detection, prompt injection blocking, LLM detection, URL filtering, normalization, and language detection.
 
@@ -59,7 +59,7 @@ Growth is for **teams shipping AI to production** who need higher volume, multip
 | **Support**              | Dedicated support + SLA             |
 | **Onboarding**           | Includes onboarding & dedicated CSM |
 
-Enterprise is for **companies with compliance requirements, large volumes, or full data control**. [Contact us](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/support) to discuss your needs.
+Enterprise is for **companies with compliance requirements, large volumes, or full data control**. [Contact us](../support/overview.md) to discuss your needs.
 
 ## Usage tracking
 
@@ -144,7 +144,7 @@ When you cancel, your Growth plan remains active until the end of the current bi
 
 When self-hosting CollieAI, billing is **disabled by default** (`BILLING_ENABLED=false`). All usage limits and Stripe integration are bypassed. You get unlimited projects, API calls, and prompt sizes with no billing UI.
 
-See [Self-Hosting](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/self-hosting) for details.
+See [Self-Hosting](../self-hosting/overview.md) for details.
 
 ### Frequently asked questions
 

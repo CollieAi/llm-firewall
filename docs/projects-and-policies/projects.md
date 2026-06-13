@@ -243,7 +243,7 @@ curl -X DELETE https://app.collieai.io/api/v1/projects/{project_id} \
 * [Policies](policies.md) -- create and manage the rule collections assigned to projects.
 * [API Keys](../getting-started/api-keys.md) -- manage API keys within a project.
 * [Provider Tokens](provider-tokens.md) -- configure the LLM provider keys used by the proxy.
-* [Security Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) -- learn about the 9 rule types available in policies.
+* [Security Rules](../security-rules/overview.md) -- learn about the 9 rule types available in policies.
 
 ### Frequently asked questions
 

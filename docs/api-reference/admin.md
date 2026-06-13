@@ -515,7 +515,7 @@ No response body.
 
 ## System Policy Rules
 
-Manage rules within system policies. These follow the same request/response format as the standard [Rules](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/security-rules) endpoints.
+Manage rules within system policies. These follow the same request/response format as the standard [Rules](../security-rules/overview.md) endpoints.
 
 ### GET /api/v1/admin/policies/{policy\_id}/rules
 

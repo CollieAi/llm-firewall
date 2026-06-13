@@ -90,4 +90,4 @@ Deactivated keys are rejected immediately on the next request - no delay. Make s
 ## See Also
 
 * [Authentication](authentication.md) -- Overview of all auth methods.
-* [API Reference: API Keys](https://app.gitbook.com/s/xKzkxBScfGXAbqoqyEbd/api-reference) -- Full endpoint documentation for key management.
+* [API Reference: API Keys](../api-reference/overview.md) -- Full endpoint documentation for key management.
