@@ -33,11 +33,10 @@ The Regex rule type enables pattern matching using **Python regular expressions*
 
 ```mermaid
 flowchart LR
-    A["Input Message"] --> B["Regex Match (re.search)"]
-    B --> C["Replace All (re.sub)"]
+    A["Input message"] --> B["Regex match (re.search)"]
     B --> D{"Match found?"}
-    D -->|yes| E["Mask / block"]
-    D -->|no| F["Pass"]
+    D -->|yes| C["Replace all (re.sub) — mask / block"]
+    D -->|no| F["Pass through unchanged"]
 ```
 
 {% stepper %}

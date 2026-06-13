@@ -14,18 +14,23 @@ Every job moves through a series of statuses from creation to completion. Unders
 
 ```mermaid
 stateDiagram-v2
-    [*] --> processing_inbound
-    processing_inbound --> awaiting_response
-    processing_inbound --> inbound_blocked
-    awaiting_response --> processing_outbound
-    processing_outbound --> delivering
-    processing_outbound --> outbound_blocked
-    delivering --> completed
-    delivering --> failed
+    [*] --> processing_inbound: job with input
+    [*] --> processing_outbound: output-only job
+    processing_inbound --> inbound_blocked: input blocked
+    processing_inbound --> completed: input-only
+    processing_inbound --> processing_outbound: combined (input + output)
+    processing_inbound --> awaiting_response: awaiting your LLM response
+    awaiting_response --> processing_outbound: you POST the response
+    processing_outbound --> outbound_blocked: output blocked
+    processing_outbound --> delivering: webhook configured
+    processing_outbound --> completed: no webhook (polling)
+    delivering --> completed: delivered
+    delivering --> failed: delivery failed after retries
     inbound_blocked --> [*]
     outbound_blocked --> [*]
     completed --> [*]
     failed --> [*]
+    expired --> [*]
     note right of awaiting_response
         Any non-terminal status
         becomes expired on timeout
