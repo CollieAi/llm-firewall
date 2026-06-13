@@ -27,6 +27,12 @@
 * [Webhooks](async-jobs/webhooks.md)
 * [Job lifecycle](async-jobs/job-lifecycle.md)
 
+## SDKs
+
+* [Python SDK](sdks/python-sdk.md)
+* [Node SDK](sdks/node-sdk.md)
+* [.NET SDK](sdks/dotnet-sdk.md)
+
 ## Security Rules
 
 * [Security rules overview](security-rules/overview.md)
@@ -35,6 +41,7 @@
   * [Regex patterns](security-rules/detecting-pii/regex-patterns.md)
   * [Structured IDs](security-rules/detecting-pii/structured-ids.md)
   * [Dictionary matching](security-rules/detecting-pii/dictionary-matching.md)
+  * [PII Allowlist](security-rules/detecting-pii/pii-allowlist.md)
 * [Blocking Threats](security-rules/blocking-threats/README.md)
   * [Prompt injection](security-rules/blocking-threats/prompt-injection.md)
   * [LLM detection](security-rules/blocking-threats/llm-detection.md)

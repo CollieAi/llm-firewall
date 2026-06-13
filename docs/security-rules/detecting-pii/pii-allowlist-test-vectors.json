@@ -1,0 +1,118 @@
+{
+  "_about": "CollieAi PII allowlist contract test vectors (norm=v1). Your SDK must reproduce expected_canonical and expected_hmac for each input. Keyed with the literal UTF-8 bytes of secret (no base64/hex decode). See pii-allowlist.md. Frozen \u2014 changes only on a documented norm version bump.",
+  "norm": "v1",
+  "alg": "HMAC-SHA256",
+  "secret": "Nf3kP9wQ2vX7zB1cD5gH8jL0mR4sT6yA3eU7iO2pK9s",
+  "structured_vectors": [
+    {
+      "entity_type": "iban",
+      "input": "DE89 3704 0044 0532 0130 00",
+      "expected_canonical": "DE89370400440532013000",
+      "expected_hmac": "ef5cf819672383117df2ebccce59c05cc5bc20dba88604d58c8a3ce84a5a868d",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "iban",
+      "input": "de89370400440532013000",
+      "expected_canonical": "DE89370400440532013000",
+      "expected_hmac": "ef5cf819672383117df2ebccce59c05cc5bc20dba88604d58c8a3ce84a5a868d",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "iban",
+      "input": "GB82 WEST 1234 5698 7654 32",
+      "expected_canonical": "GB82WEST12345698765432",
+      "expected_hmac": "6f9a145cbfd6334dc0caa8a5786de2ec7c6d3e811a9dfca3f056b5d9f3c89cd6",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "iban",
+      "input": "GB82-WEST-1234-5698-7654-32",
+      "expected_canonical": "GB82WEST12345698765432",
+      "expected_hmac": "6f9a145cbfd6334dc0caa8a5786de2ec7c6d3e811a9dfca3f056b5d9f3c89cd6",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "credit_card",
+      "input": "4111 1111 1111 1111",
+      "expected_canonical": "4111111111111111",
+      "expected_hmac": "86b8efc3f470672de80feea7028cb84f642b71d3c9020a27a6edc4508ff8b040",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "credit_card",
+      "input": "4111-1111-1111-1111",
+      "expected_canonical": "4111111111111111",
+      "expected_hmac": "86b8efc3f470672de80feea7028cb84f642b71d3c9020a27a6edc4508ff8b040",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "credit_card",
+      "input": "5555555555554444",
+      "expected_canonical": "5555555555554444",
+      "expected_hmac": "5ab1d11d3f79c86bcac9f394af9edf58501a014d116bb13d23a31c1a387e23a1",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "bic",
+      "input": "deutdeff500",
+      "expected_canonical": "DEUTDEFF500",
+      "expected_hmac": "ef01bf80d0a87cd798ae1fe7f874e487719934db28b13637a2b2b051cb6c3301",
+      "detector_detectable": true
+    },
+    {
+      "entity_type": "bic",
+      "input": "DEUT DE FF 500",
+      "expected_canonical": "DEUTDEFF500",
+      "expected_hmac": "ef01bf80d0a87cd798ae1fe7f874e487719934db28b13637a2b2b051cb6c3301",
+      "detector_detectable": false
+    },
+    {
+      "entity_type": "bic",
+      "input": "DEUTDEFF",
+      "expected_canonical": "DEUTDEFF",
+      "expected_hmac": "75e3bd7d24230c2b8bfbefcd5fc86399eca280e4cd5bd4d20150afd91e28fc29",
+      "detector_detectable": true
+    }
+  ],
+  "regex_vectors": [
+    {
+      "normalization": "minimal",
+      "input": "  John Doe  ",
+      "expected_canonical": "John Doe",
+      "expected_hmac": "30f2bd3b78cbec4681450bc444a97183de0121b9cf8a2b7a2ebfb535ee3e1a90"
+    },
+    {
+      "normalization": "minimal",
+      "input": "cafe\u0301",
+      "expected_canonical": "caf\u00e9",
+      "expected_hmac": "416acc0ec92b0bfdb40994a62ef54ed646b455f933f4a8b70b15bb86b9a2d913",
+      "_note": "input NFD (e+U+0301), canonical NFC (U+00E9) \u2014 exercises Unicode normalization"
+    },
+    {
+      "normalization": "lowercase",
+      "input": "User@Example.COM",
+      "expected_canonical": "user@example.com",
+      "expected_hmac": "d568bf1bff75a75c69c2b276979cbb43255241763782ff98460c6e27db07dc7a"
+    },
+    {
+      "normalization": "lowercase",
+      "input": "  ACME-Corp  ",
+      "expected_canonical": "acme-corp",
+      "expected_hmac": "8222a81e4b231d709500c46ffc2e3d382e413ed27a3c42fe82a0319da0857d29"
+    },
+    {
+      "normalization": "exact",
+      "input": "  Spaced Secret  ",
+      "expected_canonical": "  Spaced Secret  ",
+      "expected_hmac": "40cf56a3789ba5a70c1b6f0bf71f59d1688c196a4cf3a61fb0d324d307300b9e"
+    },
+    {
+      "_note": "pins SIMPLE lowercase: \u00df stays \u00df (full Unicode casefold would yield ss). Catches an SDK that uses casefold instead of toLowerInvariant.",
+      "normalization": "lowercase",
+      "input": "STRASSE-\u00df \u00c4",
+      "expected_canonical": "strasse-\u00df \u00e4",
+      "expected_hmac": "d39a6955e5559fb9d435c71855f252e638ef3e789f45907d2dc374edad712b39"
+    }
+  ]
+}
