@@ -108,6 +108,10 @@ Use the `event_type` query parameter to filter results. This returns the same da
 
 Logs are stored in ClickHouse, which is optimized for fast querying over large volumes of time-series data. This means searches and filters remain responsive even as your log volume grows.
 
+{% hint style="info" %}
+**Body retention vs. metadata retention.** Request and response **bodies** are kept only for your project's `body_retention_hours` (default 48h) and then blanked, while log **metadata** (timing, model, which rules fired, blocked/allowed) is retained for `log_retention_days` (default 90). Set body retention to 0 to never persist prompt/response bodies. See [Data retention](../projects-and-policies/data-retention.md).
+{% endhint %}
+
 ### Frequently asked questions
 
 **What does CollieAi log for each request?** CollieAi logs the event type, direction, timestamp, latency breakdown (input filter, LLM, output filter, queue wait), model, tokens used, which rules fired, and whether the request was blocked.

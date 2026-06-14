@@ -13,7 +13,7 @@ Security rules are the core of CollieAi's guardrails. A security rule defines wh
 **Key points**
 
 * Security rules are CollieAi's guardrails — they inspect, mask, or block content on both input and output.
-* CollieAi provides 9 rule types in 3 categories: PII detection, threat blocking, and text processing.
+* CollieAi provides 10 rule types in 3 categories: PII detection, threat blocking, and text processing.
 * Each rule has a decision (`allow`, `mask`, or `block`) and a direction (input, output, or all).
 * Rules run in order inside a policy, and each project has one active policy at a time.
 * Monitor mode lets you test rules without masking or blocking real traffic.
@@ -71,9 +71,9 @@ Because `allow` and `block` both stop the pipeline, put your most important rule
 | **Output** | After the response comes back from the provider. Use this to filter what your application receives. |
 | **All**    | Runs on both input and output stages.                                                               |
 
-## What are the 9 security rule types?
+## What are the 10 security rule types?
 
-CollieAi provides 9 rule types organized into three categories:
+CollieAi provides 10 rule types organized into three categories:
 
 ### PII Detection
 
@@ -95,6 +95,7 @@ Prevent malicious or unwanted content from reaching the model or your users.
 | [**LLM Detection**](blocking-threats/llm-detection.md)       | Uses a secondary LLM call to analyze messages for sophisticated injection attacks that evade simpler classifiers.          |
 | [**URL Filtering**](blocking-threats/url-filtering.md)       | Inspect URLs in messages. Allow or deny specific schemes, domains, and ports. Block IP literals and encoded patterns.      |
 | [**Base64 Payloads**](blocking-threats/base64-payloads.md)   | Detect base64-encoded content that might hide malicious payloads. Configure minimum length and file signature detection.   |
+| [**Output Safety (Streaming Guard)**](blocking-threats/streaming-guard.md) | Real-time safety classification of streaming model output with Qwen3Guard. Opt-in (enabled per deployment).               |
 
 ### Text Processing
 
@@ -136,7 +137,7 @@ See [Enforcement Mode](enforcement-mode.md) for details.
 
 **What is a security rule in CollieAi?** A security rule in CollieAi is a guardrail that defines what to look for in a message and what to do on a match — allow, mask, or block — applied to input, output, or both.
 
-**What types of security rules does CollieAi support?** CollieAi supports 9 rule types in three categories: PII detection (regex patterns, structured IDs, dictionary matching), threat blocking (prompt injection, LLM detection, URL filtering, base64 payloads), and text processing (normalization, language detection).
+**What types of security rules does CollieAi support?** CollieAi supports 10 rule types in three categories: PII detection (regex patterns, structured IDs, dictionary matching), threat blocking (prompt injection, LLM detection, URL filtering, base64 payloads, output safety), and text processing (normalization, language detection).
 
 **What is the difference between mask and block?** A mask decision replaces the matched content with a placeholder and lets processing continue, while a block decision rejects the entire request with a policy\_violation error and stops the pipeline.
 

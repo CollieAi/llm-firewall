@@ -1,7 +1,7 @@
 ---
 description: >-
   CollieAi Rules API — create, list, update, delete, and test security rules
-  within a policy via /api/v1/policies/{policy_id}/rules, with all 9 rule types.
+  within a policy via /api/v1/policies/{policy_id}/rules, with all 10 rule types.
 icon: sliders-simple
 ---
 
