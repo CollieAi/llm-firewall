@@ -34,11 +34,12 @@ curl https://app.collieai.io/api/v1/projects/proj_abc123/api-keys \
 ### Response -- `200 OK`
 
 ```json
-[
+{
+  "api_keys": [
   {
     "id": "key_abc123",
     "name": "Production Key",
-    "prefix": "clai_abc1",
+    "masked_key": "clai_abc1",
     "is_active": true,
     "created_at": "2025-01-10T08:00:00Z",
     "last_used_at": "2025-01-15T09:30:00Z"
@@ -46,12 +47,14 @@ curl https://app.collieai.io/api/v1/projects/proj_abc123/api-keys \
   {
     "id": "key_def456",
     "name": "Development Key",
-    "prefix": "clai_def4",
+    "masked_key": "clai_def4",
     "is_active": true,
     "created_at": "2025-01-12T10:00:00Z",
     "last_used_at": null
   }
-]
+  ],
+  "total": 2
+}
 ```
 
 ### Error Responses
@@ -77,9 +80,11 @@ Create a new API key for a project. The full key value (format: `clai_xxx`) is o
 
 ### Request Body
 
-| Field  | Type   | Required | Description              |
-| ------ | ------ | -------- | ------------------------ |
-| `name` | string | No       | Display name for the key |
+| Field         | Type   | Required | Description                         |
+| ------------- | ------ | -------- | ----------------------------------- |
+| `name`        | string | Yes      | Display name for the key (1–255)    |
+| `description` | string | No       | Optional description                |
+| `expires_at`  | string | No       | Optional ISO 8601 expiry timestamp  |
 
 ### Example Request
 
@@ -99,7 +104,7 @@ curl -X POST https://app.collieai.io/api/v1/projects/proj_abc123/api-keys \
   "id": "key_new789",
   "name": "CI/CD Pipeline Key",
   "key": "clai_abc123def456ghi789jkl012mno345",
-  "prefix": "clai_abc1",
+  "masked_key": "clai_abc1",
   "is_active": true,
   "created_at": "2025-01-15T10:00:00Z",
   "last_used_at": null

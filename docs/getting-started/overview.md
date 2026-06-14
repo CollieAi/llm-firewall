@@ -14,7 +14,7 @@ CollieAi is an AI firewall (LLM security gateway) that sits between your applica
 **Key points**
 
 * CollieAi is a drop-in, provider-agnostic proxy — switch by changing one `base_url`. It works with any major LLM provider through an OpenAI-compatible API and Anthropic's native Messages API.
-* It secures OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, AWS Bedrock, and self-hosted models (vLLM, Ollama, LocalAI).
+* It works with OpenAI and Anthropic Claude out of the box, and with any OpenAI-compatible endpoint (including self-hosted models like vLLM, Ollama, or LocalAI) via a custom base URL. Native Gemini, Azure OpenAI, and Bedrock support is on the roadmap.
 * Two integration paths: a real-time drop-in proxy, and async jobs for batch or long-running work.
 * You need a CollieAi account and a provider API key to send your first secured request.
 {% endhint %}
@@ -26,7 +26,7 @@ CollieAi is an AI firewall (LLM security gateway) that sits between your applica
 Before you begin, make sure you have:
 
 * [x] **A CollieAi account** - Sign up at [app.collieai.io](https://app.collieai.io/) using Google OAuth or email/password.
-* [x] **A provider API key** - You need an API key from your LLM provider — OpenAI, Anthropic, Google Gemini, Azure OpenAI, AWS Bedrock, or a self-hosted endpoint. CollieAi proxies your requests using this key.
+* [x] **A provider API key** - You need an API key from your LLM provider — OpenAI or Anthropic (or any OpenAI-compatible endpoint). CollieAi proxies your requests using this key.
 
 ## Three Ways to Integrate
 

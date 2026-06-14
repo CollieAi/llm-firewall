@@ -131,12 +131,13 @@ curl https://app.collieai.io/api/v1/dictionaries \
 ### Response -- `200 OK`
 
 ```json
-[
+{
+  "dictionaries": [
   {
     "id": "dict_abc123",
     "name": "Profanity List",
     "description": "Common profane words and phrases",
-    "is_system": false,
+    "dictionary_type": "user",
     "case_sensitive": false,
     "word_count": 245,
     "created_at": "2025-01-10T08:00:00Z",
@@ -146,13 +147,15 @@ curl https://app.collieai.io/api/v1/dictionaries \
     "id": "dict_sys001",
     "name": "HIPAA Terms",
     "description": "Healthcare-related protected terms",
-    "is_system": true,
+    "dictionary_type": "system",
     "case_sensitive": false,
     "word_count": 1200,
     "created_at": "2025-01-01T00:00:00Z",
     "updated_at": "2025-01-01T00:00:00Z"
   }
-]
+  ],
+  "total": 2
+}
 ```
 
 ### Error Responses
@@ -179,18 +182,21 @@ curl https://app.collieai.io/api/v1/dictionaries/system \
 ### Response -- `200 OK`
 
 ```json
-[
+{
+  "dictionaries": [
   {
     "id": "dict_sys001",
     "name": "HIPAA Terms",
     "description": "Healthcare-related protected terms",
-    "is_system": true,
+    "dictionary_type": "system",
     "case_sensitive": false,
     "word_count": 1200,
     "created_at": "2025-01-01T00:00:00Z",
     "updated_at": "2025-01-01T00:00:00Z"
   }
-]
+  ],
+  "total": 1
+}
 ```
 
 ### Error Responses
@@ -237,7 +243,7 @@ curl -X POST https://app.collieai.io/api/v1/dictionaries \
   "id": "dict_new789",
   "name": "Internal Project Names",
   "description": "Codenames that should not appear in outputs",
-  "is_system": false,
+  "dictionary_type": "user",
   "case_sensitive": false,
   "word_count": 3,
   "created_at": "2025-01-15T10:00:00Z",
@@ -287,7 +293,7 @@ curl -X POST https://app.collieai.io/api/v1/dictionaries/upload \
   "id": "dict_upl456",
   "name": "Uploaded Dictionary",
   "description": "Imported from external source",
-  "is_system": false,
+  "dictionary_type": "user",
   "case_sensitive": false,
   "word_count": 150,
   "created_at": "2025-01-15T10:00:00Z",
@@ -315,7 +321,7 @@ Extract words from text with relevance scoring. Useful for building dictionaries
 
 | Field  | Type   | Required | Description                    |
 | ------ | ------ | -------- | ------------------------------ |
-| `text` | string | Yes      | The text to extract words from |
+| `content` | string | Yes    | The text to extract words from |
 
 ### Example Request
 
@@ -324,7 +330,7 @@ curl -X POST https://app.collieai.io/api/v1/dictionaries/extract \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "The patient was diagnosed with diabetes mellitus type 2 and prescribed metformin."
+    "content": "The patient was diagnosed with diabetes mellitus type 2 and prescribed metformin."
   }'
 ```
 
@@ -390,7 +396,7 @@ curl -X PUT https://app.collieai.io/api/v1/dictionaries/dict_abc123 \
   "id": "dict_abc123",
   "name": "Profanity List (Updated)",
   "description": "Common profane words and phrases",
-  "is_system": false,
+  "dictionary_type": "user",
   "case_sensitive": false,
   "word_count": 4,
   "created_at": "2025-01-10T08:00:00Z",

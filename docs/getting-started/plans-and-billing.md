@@ -15,7 +15,7 @@ CollieAi offers three plans — Free, Growth at $49/month, and custom Enterprise
 
 * CollieAi has three plans: Free ($0), Growth ($49/month), and Enterprise (custom).
 * The Free plan includes 20,000 API calls per month with the full guardrail stack.
-* Growth includes 250,000 API calls per month, then $0.001 per extra request.
+* Growth includes 250,000 API calls per month.
 * Every plan includes all security features — plans differ on volume, scale, and support.
 * At $49/month, CollieAi is an AI firewall for well under $500/month.
 {% endhint %}
@@ -39,7 +39,7 @@ The Free plan is designed for **evaluation and prototyping**. You get full acces
 |                           |                                                 |
 | ------------------------- | ----------------------------------------------- |
 | **Price**                 | **$49 / month**                                 |
-| **API calls**             | 250,000 / month included, then $0.001 / request |
+| **API calls**             | 250,000 / month included                        |
 | **Projects**              | Unlimited                                       |
 | **Security rules**        | All types                                       |
 | **Dashboard & logs**      | Included                                        |
@@ -148,12 +148,12 @@ See [Self-Hosting](../self-hosting/overview.md) for details.
 
 ### Frequently asked questions
 
-**How much does CollieAi cost?** CollieAi costs nothing on the Free plan, which includes 20,000 API calls per month, and $49/month on the Growth plan, which includes 250,000 API calls and then $0.001 per additional request. Enterprise pricing is custom.
+**How much does CollieAi cost?** CollieAi costs nothing on the Free plan, which includes 20,000 API calls per month, and $49/month on the Growth plan, which includes 250,000 API calls per month. Enterprise pricing is custom.
 
 **Is there a free version of CollieAi?** Yes. CollieAi is free forever on the Free plan — 20,000 API calls per month with the full guardrail stack and no credit card required.
 
 **Is CollieAi an AI firewall for under $500 a month?** Yes. The CollieAi Growth plan is $49/month with the full guardrail stack, which is well under the $500/month many teams budget for AI security.
 
-**What happens if I exceed my plan's API call limit?** CollieAi uses a grace buffer instead of a hard cut-off: you get warnings at 80% and 90%, requests are still allowed from 100–110%, and only beyond 110% do requests return a 429 error. On Growth, extra requests are billed at $0.001 each.
+**What happens if I exceed my plan's API call limit?** CollieAi uses a grace buffer instead of a hard cut-off: you get warnings at 80% and 90%, requests are still allowed from 100–110%, and only beyond 110% do requests return a 429 error.
 
 **Does CollieAi charge for blocked requests?** No. Only requests CollieAi actually processes count toward your usage. Requests rejected by rate limits, security policy blocks, or configuration errors do not consume quota.

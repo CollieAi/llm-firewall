@@ -113,7 +113,7 @@ print(response.choices[0].message.content)
 ```
 
 {% hint style="info" %}
-This example uses the OpenAI SDK, but CollieAi is provider-agnostic. You can also use the Anthropic SDK against the native Messages API, and route to Anthropic Claude, Google Gemini, Azure OpenAI, AWS Bedrock, or self-hosted models — the same security pipeline applies.
+This example uses the OpenAI SDK, but CollieAi is provider-agnostic. You can also use the Anthropic SDK against the native Messages API to route to Anthropic Claude, and point CollieAi at any OpenAI-compatible endpoint (including self-hosted models) via a custom base URL — the same security pipeline applies.
 {% endhint %}
 
 That is it. Your request now flows through CollieAi's security pipeline before reaching OpenAI.

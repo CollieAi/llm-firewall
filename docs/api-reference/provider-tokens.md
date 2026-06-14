@@ -27,12 +27,13 @@ curl https://app.collieai.io/api/v1/tokens \
 ### Response — `200 OK`
 
 ```json
-[
+{
+  "tokens": [
   {
     "id": "tok_abc123",
     "name": "OpenAI Production",
     "provider": "openai",
-    "key_masked": "sk-...abc1",
+    "masked_api_key": "sk-...abc1",
     "is_default": true,
     "created_at": "2025-01-10T08:00:00Z",
     "updated_at": "2025-01-10T08:00:00Z"
@@ -41,12 +42,14 @@ curl https://app.collieai.io/api/v1/tokens \
     "id": "tok_def456",
     "name": "Anthropic Key",
     "provider": "anthropic",
-    "key_masked": "sk-ant-...def4",
+    "masked_api_key": "sk-ant-...def4",
     "is_default": false,
     "created_at": "2025-01-12T09:00:00Z",
     "updated_at": "2025-01-12T09:00:00Z"
   }
-]
+  ],
+  "total": 2
+}
 ```
 
 ### Error Responses
@@ -67,10 +70,11 @@ Add a new provider token.
 
 | Field        | Type    | Required | Description                                              |
 | ------------ | ------- | -------- | -------------------------------------------------------- |
-| `provider`   | string  | Yes      | Provider identifier (`openai`, `anthropic`, etc.)        |
-| `api_key`    | string  | Yes      | The provider API key value                               |
-| `name`       | string  | No       | Display name for the token                               |
-| `is_default` | boolean | No       | Set as default token for this provider. Default: `false` |
+| `name`           | string  | Yes      | Display name for the token                               |
+| `provider`       | string  | No       | Provider: `openai` or `anthropic`. Default: `openai`    |
+| `api_key`        | string  | Yes      | The provider API key value                               |
+| `base_url`       | string  | No       | Optional custom base URL                                 |
+| `set_as_default` | boolean | No       | Set as default token for this provider. Default: `false` |
 
 ### Example Request
 
@@ -80,9 +84,10 @@ curl -X POST https://app.collieai.io/api/v1/tokens \
   -H "Content-Type: application/json" \
   -d '{
     "provider": "openai",
-    "api_key": "sk-abc123...",
     "name": "OpenAI Production",
-    "is_default": true
+    "provider": "openai",
+    "api_key": "sk-abc123...",
+    "set_as_default": true
   }'
 ```
 

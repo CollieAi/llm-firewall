@@ -1,19 +1,19 @@
 ---
 description: >-
-  How CollieAi provider tokens work — store your OpenAI, Anthropic, Azure
-  OpenAI, or Google Gemini API keys, encrypted at rest, so your app only needs a
+  How CollieAi provider tokens work — store your OpenAI and Anthropic API
+  keys, encrypted at rest, so your app only needs a
   CollieAi key to reach the upstream model.
 icon: square-binary
 ---
 
 # Provider tokens
 
-Provider tokens are the API keys for your LLM provider — OpenAI, Anthropic, Azure OpenAI, or Google Gemini. CollieAi stores these tokens and uses them when proxying requests to the upstream model, so your application only needs a CollieAi API key.
+Provider tokens are the API keys for your LLM provider — currently **OpenAI** and **Anthropic**. CollieAi stores these tokens and uses them when proxying requests to the upstream model, so your application only needs a CollieAi API key.
 
 {% hint style="info" %}
 **Key points**
 
-* Provider tokens are your upstream LLM API keys (OpenAI, Anthropic, Azure OpenAI, Google Gemini) stored in CollieAi.
+* Provider tokens are your upstream LLM API keys (OpenAI, Anthropic) stored in CollieAi.
 * They are user-scoped, so you configure a key once and all your projects use it via your default token.
 * Tokens are encrypted at rest with Fernet (AES-128-CBC + HMAC-SHA256) when an encryption key is configured.
 * Your application only needs a `clai_` CollieAi key — it never handles the raw provider key.
@@ -78,8 +78,6 @@ When the `PROVIDER_TOKEN_ENCRYPTION_KEY` environment variable is set, CollieAi e
 | ------------- | ----------- | --------------------------------------- |
 | OpenAI        | `openai`    | Standard OpenAI API keys (`sk-...`)     |
 | Anthropic     | `anthropic` | Claude Messages API keys (`sk-ant-...`) |
-| Azure OpenAI  | `azure`     | Azure-specific endpoint and key         |
-| Google Gemini | `gemini`    | Google AI API keys                      |
 
 ## API reference
 
@@ -164,6 +162,6 @@ curl -X DELETE https://app.collieai.io/api/v1/tokens/{token_id} \
 
 ### Frequently asked questions
 
-**Which LLM providers can I connect to CollieAi?** You can store provider tokens for OpenAI, Anthropic (Claude), Azure OpenAI, and Google Gemini. CollieAi uses your default token for each provider when proxying requests, so your application only needs a CollieAi API key.
+**Which LLM providers can I connect to CollieAi?** You can store provider tokens for OpenAI and Anthropic (Claude) today; native Azure OpenAI and Google Gemini support is on the roadmap. CollieAi uses your default token for each provider when proxying requests, so your application only needs a CollieAi API key.
 
 **Are my provider API keys stored securely in CollieAi?** Yes. When an encryption key is configured, CollieAi encrypts provider tokens at rest with Fernet (AES-128-CBC + HMAC-SHA256), masks them in API responses (last 4 characters only), and never exposes them to your application.

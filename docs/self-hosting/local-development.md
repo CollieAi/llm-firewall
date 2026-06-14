@@ -280,7 +280,7 @@ Expected response: `PONG`
 ### ML Models Not Loading
 
 1. Verify `PRELOAD_MODELS=true` is set in your `.env` file.
-2. Check that `HF_TOKEN` is valid -- gated models require a HuggingFace token with accepted license agreements.
+2. `HF_TOKEN` is only needed if you add a gated model — the bundled models don't require one.
 3. Ensure the machine has network access to `huggingface.co`. Models are downloaded on first startup and cached locally.
 4.  Check API server logs for model loading errors:
 
