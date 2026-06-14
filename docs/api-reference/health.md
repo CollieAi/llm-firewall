@@ -7,13 +7,13 @@ icon: stethoscope
 
 # Health
 
-Health check endpoints for monitoring application status and dependencies.
+Health check endpoints for monitoring application status and dependencies. All health endpoints return `200 OK` and report state in the response body (they do not return `503`); a `timestamp` (Unix seconds) is included on every response.
 
 ***
 
 ## GET /api/v1/health
 
-Basic liveness probe. Returns `200` if the application is running.
+Basic liveness check. Returns `200` if the application is running. Does not test dependencies.
 
 **URL:** `https://app.collieai.io/api/v1/health`
 
@@ -29,9 +29,10 @@ curl https://app.collieai.io/api/v1/health
 
 ```json
 {
-  "status": "ok",
-  "service": "collieai",
-  "version": "1.5.0"
+  "status": "healthy",
+  "service": "CollieAI",
+  "version": "1.0.1",
+  "timestamp": 1737021000.123
 }
 ```
 
@@ -39,7 +40,7 @@ curl https://app.collieai.io/api/v1/health
 
 ## GET /api/v1/health/ready
 
-Readiness probe. Checks all critical dependencies (database, Redis, ClickHouse).
+Readiness probe. Checks infrastructure dependencies (Postgres, Redis, ClickHouse) and, when `INFERENCE_BACKEND=http`, reports inference-runner state as a separate diagnostic. `status` reflects infrastructure only — a dead inference runner does **not** flip readiness to `not_ready` (ML rules fail open).
 
 **URL:** `https://app.collieai.io/api/v1/health/ready`
 
@@ -51,37 +52,30 @@ Readiness probe. Checks all critical dependencies (database, Redis, ClickHouse).
 curl https://app.collieai.io/api/v1/health/ready
 ```
 
-### Response -- `200 OK` (all healthy)
+### Response -- `200 OK`
 
 ```json
 {
-  "status": "ok",
+  "status": "ready",
+  "service": "CollieAI",
+  "version": "1.0.1",
   "checks": {
-    "database": {"status": "ok", "latency_ms": 2},
-    "redis": {"status": "ok", "latency_ms": 1},
-    "clickhouse": {"status": "ok", "latency_ms": 5}
-  }
+    "postgres": true,
+    "redis": true,
+    "clickhouse": true
+  },
+  "inference": { "ready": true },
+  "timestamp": 1737021000.123
 }
 ```
 
-### Response -- `503 Service Unavailable` (dependency unhealthy)
-
-```json
-{
-  "status": "degraded",
-  "checks": {
-    "database": {"status": "ok", "latency_ms": 2},
-    "redis": {"status": "error", "error": "Connection refused"},
-    "clickhouse": {"status": "ok", "latency_ms": 5}
-  }
-}
-```
+`status` is `"ready"` when all `checks` are `true`, otherwise `"not_ready"` (still HTTP `200`). `inference` is `null` when `INFERENCE_BACKEND=local`; in `http` mode it carries runner diagnostics (`ready` plus per-runner detail).
 
 ***
 
 ## GET /api/v1/health/live
 
-Kubernetes liveness probe. Lightweight check that returns `200` if the process is alive. Does not check external dependencies.
+Minimal liveness check for a Kubernetes liveness probe. Returns `200` if the process is running.
 
 **URL:** `https://app.collieai.io/api/v1/health/live`
 
@@ -97,7 +91,7 @@ curl https://app.collieai.io/api/v1/health/live
 
 ```json
 {
-  "status": "ok"
+  "status": "alive"
 }
 ```
 
@@ -105,7 +99,7 @@ curl https://app.collieai.io/api/v1/health/live
 
 ## GET /api/v1/health/models
 
-ML models status. Reports loaded state of all models used for rule evaluation.
+ML model status. Reports which models are downloaded on disk (models load lazily in the worker, so this checks the shared model cache).
 
 **URL:** `https://app.collieai.io/api/v1/health/models`
 
@@ -122,41 +116,33 @@ curl https://app.collieai.io/api/v1/health/models
 ```json
 {
   "status": "ok",
-  "language_detection": {
-    "loaded": true
+  "models": {
+    "language_detection": {
+      "loaded": true,
+      "default_model_id": "fasttext/lid.176.ftz",
+      "model_path": "/models/lid.176.ftz",
+      "models": {
+        "fasttext/lid.176.ftz": { "downloaded": true, "model_path": "/models/lid.176.ftz" }
+      }
+    },
+    "lightweight_classifiers": {
+      "loaded_models": ["codeintegrity-ai/promptguard"]
+    },
+    "generative": {
+      "loaded_models": []
+    }
   },
-  "lightweight_classifiers": {
-    "loaded_models": ["prompt_injection", "toxicity", "relevance"]
-  },
-  "generative": {
-    "loaded_models": ["gpt-4o-mini"]
-  }
+  "timestamp": 1737021000.123
 }
 ```
 
-### Response -- `503 Service Unavailable` (model not loaded)
-
-```json
-{
-  "status": "degraded",
-  "language_detection": {
-    "loaded": false,
-    "error": "Failed to load model weights"
-  },
-  "lightweight_classifiers": {
-    "loaded_models": ["prompt_injection"]
-  },
-  "generative": {
-    "loaded_models": []
-  }
-}
-```
+`loaded_models` lists the model IDs found in the cache; it is empty when none are downloaded.
 
 ***
 
 ## GET /api/v1/health/queues
 
-Queue depths for async jobs monitoring.
+Redis queue depths for async-job and webhook monitoring. A growing `inbound_filtering` queue means jobs are waiting longer in `processing_inbound`.
 
 **URL:** `https://app.collieai.io/api/v1/health/queues`
 
@@ -172,14 +158,18 @@ curl https://app.collieai.io/api/v1/health/queues
 
 ```json
 {
-  "status": "ok",
+  "status": "healthy",
   "queues": {
     "inbound_filtering": 0,
     "outbound_filtering": 2,
+    "log_events": 0,
     "webhook_delivery": 1,
     "webhook_retry": 0,
     "webhook_dead_letter": 0
   },
-  "total_pending": 3
+  "total_pending": 3,
+  "timestamp": 1737021000.123
 }
 ```
+
+`status` is `"healthy"` when `total_pending` (inbound + outbound + webhook_delivery + webhook_retry) is under 100, otherwise `"backlogged"`.
