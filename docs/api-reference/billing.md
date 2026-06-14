@@ -64,8 +64,8 @@ Get the current user's subscription plan, usage, and limits.
   "status": "active",
   "usage": {
     "api_calls_used": 8420,
-    "api_calls_limit": 15000,
-    "percentage": 56.1,
+    "api_calls_limit": 20000,
+    "percentage": 42.1,
     "warning_level": null,
     "reset_at": "2026-05-01T00:00:00Z"
   },

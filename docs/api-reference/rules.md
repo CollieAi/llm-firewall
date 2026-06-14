@@ -64,14 +64,15 @@ curl https://app.collieai.io/api/v1/policies/pol_abc123/rules \
 ### Response -- `200 OK`
 
 ```json
-[
+{
+  "rules": [
   {
     "id": "rule_001",
     "name": "SSN Pattern Detection",
     "description": "Detect Social Security Number patterns",
     "rule_type": "regex",
     "order": 1,
-    "direction": "both",
+    "direction": "all",
     "decision": "block",
     "config": {
       "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b"
@@ -99,7 +100,9 @@ curl https://app.collieai.io/api/v1/policies/pol_abc123/rules \
     "created_at": "2025-01-10T08:30:00Z",
     "updated_at": "2025-01-12T14:00:00Z"
   }
-]
+  ],
+  "total": 2
+}
 ```
 
 ### Error Responses
