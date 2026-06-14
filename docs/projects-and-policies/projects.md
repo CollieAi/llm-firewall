@@ -44,7 +44,7 @@ curl -X POST https://app.collieai.io/api/v1/projects \
   "name": "production-chatbot",
   "description": "Customer-facing AI assistant",
   "active_policy_id": "e5f6a7b8-...",
-  "filter_all_messages": true,
+  "filter_all_messages": false,
   "api_key": {
     "id": "k1l2m3n4-...",
     "name": "production-chatbot-key",
@@ -66,10 +66,10 @@ Controls how CollieAi processes multi-turn conversations:
 
 | Value            | Behavior                                                                                              |
 | ---------------- | ----------------------------------------------------------------------------------------------------- |
-| `true` (default) | **All messages** in the conversation are filtered on every request.                                   |
-| `false`          | Only the **last message** in the conversation is filtered. Previous messages are forwarded unchanged. |
+| `false` (default) | Only the **last message** in the conversation is filtered. Previous messages are forwarded unchanged. |
+| `true`            | **All messages** in the conversation are filtered on every request.                                  |
 
-Filtering all messages provides stronger protection (a user cannot sneak PII into earlier turns), but increases processing time for long conversations. Set to `false` if you only need to filter the latest user message for better performance.
+By default only the latest message is filtered, for performance. Set to `true` for stronger protection (a user cannot sneak PII into earlier turns), at the cost of more processing on long conversations.
 
 ```bash
 curl -X PATCH https://app.collieai.io/api/v1/projects/{project_id} \

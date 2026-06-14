@@ -100,7 +100,7 @@ curl -X POST https://app.collieai.io/api/v1/projects \
   "description": "Staging environment",
   "owner_id": "usr_owner1",
   "active_policy_id": "pol_auto456",
-  "filter_all_messages": true,
+  "filter_all_messages": false,
   "rate_limit_rpm": null,
   "body_retention_hours": 48,
   "log_retention_days": 90,

@@ -74,7 +74,7 @@ curl -X POST https://app.collieai.io/v1/jobs \
 You don't need a separate "this job will receive chunks" flag — any job is eligible for chunk submission as long as the project's policy is streaming-eligible.
 
 {% hint style="info" %}
-**Note on webhooks:** terminal webhooks (`job.outbound_complete` / `job.outbound_blocked`) fire for the **webhook async-job flow** (legacy `message`/`message_output` submission). For chunk-ingestion jobs, terminal state is signaled by the `finished: true` flag on the last `POST /chunks` response and by the `event: end` frame on `GET /stream` — no webhook is fired at the end of a chunk stream. The `webhook_url` field on the job is still required at creation time (the field is global to all jobs) but isn't used for chunk-ingestion sessions.
+**Note on webhooks:** terminal webhooks (`job.outbound_complete` / `job.outbound_blocked`) fire for the **webhook async-job flow** (legacy `message`/`message_output` submission). For chunk-ingestion jobs, terminal state is signaled by the `finished: true` flag on the last `POST /chunks` response and by the `event: end` frame on `GET /stream` — no webhook is fired at the end of a chunk stream. The `webhook_url` field is optional at creation time and isn't used for chunk-ingestion sessions — omit it for chunk streaming.
 {% endhint %}
 
 ### 2. Push chunks as the upstream model streams

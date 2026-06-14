@@ -196,7 +196,7 @@ No response body.
 | ------ | ----------------------------------------------- |
 | `401`  | Not authenticated                               |
 | `404`  | Policy not found                                |
-| `409`  | Policy is in use as active policy for a project |
+| `400`  | Policy is the default, or is assigned to a project (remove it first) |
 
 ### POST /api/v1/policies/{policy\_id}/set-default
 
@@ -223,14 +223,7 @@ curl -X POST https://app.collieai.io/api/v1/policies/pol_abc123/set-default \
 
 ```json
 {
-  "id": "pol_abc123",
-  "name": "Default Policy",
-  "description": "Standard content safety rules",
-  "enforcement_mode": "enforce",
-  "is_default": true,
-  "rules_count": 5,
-  "created_at": "2025-01-10T08:00:00Z",
-  "updated_at": "2025-01-15T11:00:00Z"
+  "default_policy_id": "pol_abc123"
 }
 ```
 

@@ -8,7 +8,7 @@ icon: briefcase-arrow-right
 
 # Jobs
 
-Asynchronous request processing. Create a job to evaluate content against policy rules, with optional LLM forwarding and webhook delivery.
+Asynchronous request processing. Create a job to evaluate content against your policy rules. Async Jobs **only filter content** — you call your LLM yourself; CollieAi never forwards to a provider. Results are delivered by webhook or by polling.
 
 ***
 
@@ -27,20 +27,22 @@ Create a new async job.
 | `message`            | string  | No       | Shorthand for a single user message. Mutually exclusive with `message_input`/`message_output` |
 | `message_input`      | string  | No       | Input message to evaluate against input rules                                                 |
 | `message_output`     | string  | No       | Output message to evaluate against output rules                                               |
-| `webhook_url`        | string  | Yes      | URL to receive the job result via POST                                                        |
+| `webhook_url`        | string  | No       | Optional. URL to receive the job result via POST. Omit to poll `GET /v1/jobs/{id}` instead.    |
 | `metadata`           | object  | No       | Arbitrary key-value pairs attached to the job                                                 |
-| `expires_in_seconds` | integer | No       | Job TTL in seconds. Default: 86400 (24h)                                                      |
-| `inbound_only`       | boolean | No       | Only run input rules, skip LLM forwarding. Default: `false`                                   |
+| `expires_in_seconds` | integer | No       | Job TTL in seconds (60–604800). Default: 3600 (1h)                                            |
+| `inbound_only`       | boolean | No       | Only run input rules; complete without awaiting an LLM response. Default: `false`             |
 
 ### Field Behavior
 
-| Scenario                           | Input Rules | LLM Call | Output Rules              |
-| ---------------------------------- | ----------- | -------- | ------------------------- |
-| `message` only                     | Evaluated   | Yes      | Evaluated on LLM response |
-| `message_input` only               | Evaluated   | Yes      | Evaluated on LLM response |
-| `message_output` only              | Skipped     | No       | Evaluated                 |
-| `message_input` + `message_output` | Evaluated   | No       | Evaluated                 |
-| `inbound_only: true` + `message`   | Evaluated   | No       | Skipped                   |
+CollieAi never calls your LLM — you do. Depending on which fields you send, a job either filters the input and waits for you to submit the LLM response, or filters input and output together in one call.
+
+| Scenario                           | Input Rules | Output Rules                         | Flow                                                      |
+| ---------------------------------- | ----------- | ------------------------------------ | -------------------------------------------------------- |
+| `message` only                     | Evaluated   | Evaluated on the response you submit | Waits in `awaiting_response`; you `POST .../response`    |
+| `message_input` only               | Evaluated   | Evaluated on the response you submit | Waits in `awaiting_response`; you `POST .../response`    |
+| `message_output` only              | Skipped     | Evaluated                            | Completes after output filtering                         |
+| `message_input` + `message_output` | Evaluated   | Evaluated                            | Both filtered in one call; no response submission needed |
+| `inbound_only: true` + `message`   | Evaluated   | Skipped                              | Completes after input filtering                          |
 
 ### Example Request
 
@@ -63,7 +65,7 @@ curl -X POST https://app.collieai.io/v1/jobs \
 ```json
 {
   "job_id": "job_abc123def456",
-  "status": "pending",
+  "status": "processing_inbound",
   "webhook_secret": "whsec_abc123",
   "created_at": "2025-01-15T10:30:00Z",
   "expires_at": "2025-01-16T10:30:00Z"
@@ -139,12 +141,15 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
 
 | Status              | Description                                             |
 | ------------------- | ------------------------------------------------------- |
-| `pending`           | Created, waiting to be processed                        |
-| `processing`        | Currently being evaluated                               |
-| `awaiting_response` | Input rules passed, waiting for LLM response submission |
-| `completed`         | All processing finished                                 |
-| `failed`            | Processing encountered an error                         |
-| `expired`           | Job exceeded its TTL                                    |
+| `processing_inbound`  | Input filtering in progress                              |
+| `inbound_blocked`     | Blocked by an input rule (terminal)                     |
+| `awaiting_response`   | Input passed; waiting for you to submit the LLM response |
+| `processing_outbound` | Output filtering in progress                            |
+| `outbound_blocked`    | Blocked by an output rule (terminal)                    |
+| `delivering`          | Webhook delivery in progress                            |
+| `completed`           | Finished successfully (terminal)                        |
+| `failed`              | Webhook delivery failed after retries (terminal)       |
+| `expired`             | Job exceeded its TTL (terminal)                         |
 
 ### Error Responses
 
@@ -191,7 +196,7 @@ curl -X POST https://app.collieai.io/v1/jobs/job_abc123def456/response \
 ```json
 {
   "job_id": "job_abc123def456",
-  "status": "processing"
+  "status": "processing_outbound"
 }
 ```
 
@@ -226,6 +231,7 @@ Submit one chunk of an upstream-model stream for filtering. Use this when **you 
 | `sequence` | integer | Yes      | Monotonic per-job chunk index, starting at `0`. Each subsequent chunk MUST be `N+1`. Repeating the last sequence is treated as an idempotent retry.                             |
 | `content`  | string  | Yes      | Text chunk from the upstream model. Empty string is valid (e.g. for a `sequence=N` chunk whose only purpose is to mark `is_final=true`).                                        |
 | `is_final` | boolean | No       | `true` on the last chunk of the stream. Triggers the engine's final flush and marks the session terminal. Further submits return `409 chunk_session_finished`. Default `false`. |
+| `finish_reason` | string | No | Optional provider finish reason (e.g. `stop`, `length`). Only valid on the final chunk (`is_final: true`); max 64 characters. Persisted to the audit log. |
 
 ### Idempotency
 
@@ -275,6 +281,7 @@ Each emit:
 | ----------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
 | `content`         | string  | Safe text to forward to your end user. Masked content already has placeholders applied.                      |
 | `blocked`         | boolean | `true` when a rule fired a block. The emit is the terminal emit; the session is finished.                    |
+| `block_message`   | string  | Customer-facing block message (the rule's configured message or the backend default). Present only on blocked emits. |
 | `final`           | boolean | `true` for the terminal sentinel emit (sent after `is_final=true` drains the buffer, or for a blocked emit). |
 | `triggered_rules` | array   | Rule audit entries that fired on this emit (rule id, name, decision, etc.).                                  |
 
@@ -390,7 +397,7 @@ List jobs for the authenticated project.
 | --------------- | ------- | -------- | ------------------------------------------------------------------------------------------------- |
 | `page`          | integer | No       | Page number, starting from 1. Default: 1                                                          |
 | `page_size`     | integer | No       | Items per page, 1-100. Default: 20                                                                |
-| `status_filter` | string  | No       | Filter by status (`pending`, `processing`, `awaiting_response`, `completed`, `failed`, `expired`) |
+| `status_filter` | string  | No       | Filter by status (`processing_inbound`, `inbound_blocked`, `awaiting_response`, `processing_outbound`, `outbound_blocked`, `delivering`, `completed`, `failed`, `expired`) |
 
 ### Example Request
 

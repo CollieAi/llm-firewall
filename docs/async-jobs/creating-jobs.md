@@ -31,7 +31,7 @@ Authorization: Bearer clai_xxx
 | `message`            | string  | No\*     | Content for input filtering (legacy mode)                |
 | `message_input`      | string  | No\*     | User message for input rules                             |
 | `message_output`     | string  | No\*     | AI response for output rules                             |
-| `webhook_url`        | string  | Yes      | HTTPS URL where filtered results are delivered           |
+| `webhook_url`        | string  | No       | Optional HTTPS URL for result delivery (omit to poll)    |
 | `metadata`           | object  | No       | Custom key-value pairs passed through to webhooks        |
 | `expires_in_seconds` | integer | No       | Job expiration time (default: 3600, max: 604800)         |
 | `inbound_only`       | boolean | No       | Mark job complete after input filtering (default: false) |
@@ -40,7 +40,7 @@ Authorization: Bearer clai_xxx
 
 ### Field Combination Behavior
 
-| Fields Provided                        | Input Filtering    | Output Filtering | Webhooks Delivered                     |
+| Fields Provided                        | Input Filtering    | Output Filtering | Terminal event (webhook if set)                     |
 | -------------------------------------- | ------------------ | ---------------- | -------------------------------------- |
 | `message`                              | Yes (legacy rules) | No               | `job.inbound_complete`                 |
 | `message_input`                        | Yes                | No               | `job.inbound_complete`                 |
