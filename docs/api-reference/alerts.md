@@ -8,7 +8,7 @@ icon: siren-on
 
 # Alerts
 
-Automated monitoring for projects. Define alert rules that trigger events when metrics exceed thresholds, then track and acknowledge events.
+Automated monitoring for projects. Define alert rules that fire events when a metric crosses a threshold over a time window, then track and acknowledge those events in the dashboard.
 
 ## Alert Rules
 
@@ -28,16 +28,16 @@ Create an alert rule for a project.
 
 #### Request Body
 
-| Field              | Type    | Required | Description                                                                    |
-| ------------------ | ------- | -------- | ------------------------------------------------------------------------------ |
-| `name`             | string  | Yes      | Alert rule name                                                                |
-| `description`      | string  | No       | Alert rule description                                                         |
-| `metric`           | string  | Yes      | Metric to monitor (`block_rate`, `error_rate`, `latency_p99`, `request_count`) |
-| `operator`         | string  | Yes      | Comparison operator: `gt`, `gte`, `lt`, `lte`, `eq`                            |
-| `threshold`        | number  | Yes      | Threshold value that triggers the alert                                        |
-| `time_window`      | integer | Yes      | Evaluation window in minutes                                                   |
-| `cooldown_minutes` | integer | No       | Minimum minutes between repeated alerts. Default: 60                           |
-| `is_enabled`       | boolean | No       | Whether the rule is active. Default: `true`                                    |
+| Field              | Type    | Required | Description                                                                                       |
+| ------------------ | ------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `name`             | string  | Yes      | Alert rule name (1–255 chars)                                                                     |
+| `description`      | string  | No       | Alert rule description                                                                            |
+| `metric`           | string  | Yes      | Metric to monitor: `blocked_rate`, `error_rate`, `latency_p95`, `rule_triggers`, `total_requests` |
+| `operator`         | string  | Yes      | Comparison operator: `>`, `<`, `>=`, `<=`                                                         |
+| `threshold`        | number  | Yes      | Threshold value that triggers the alert (≥ 0)                                                     |
+| `time_window`      | string  | Yes      | Evaluation window: `5m`, `15m`, or `1h`                                                           |
+| `cooldown_minutes` | integer | No       | Minimum minutes between repeated alerts (1–1440). Default: 60                                     |
+| `is_enabled`       | boolean | No       | Whether the rule is active. Default: `true`                                                       |
 
 #### Example Request
 
@@ -48,10 +48,10 @@ curl -X POST https://app.collieai.io/api/v1/alerts/projects/proj_abc123/rules \
   -d '{
     "name": "High Block Rate",
     "description": "Alert when block rate exceeds 25%",
-    "metric": "block_rate",
-    "operator": "gt",
+    "metric": "blocked_rate",
+    "operator": ">",
     "threshold": 0.25,
-    "time_window": 15,
+    "time_window": "15m",
     "cooldown_minutes": 30
   }'
 ```
@@ -61,15 +61,17 @@ curl -X POST https://app.collieai.io/api/v1/alerts/projects/proj_abc123/rules \
 ```json
 {
   "id": "alert_rule_abc123",
+  "project_id": "proj_abc123",
   "name": "High Block Rate",
   "description": "Alert when block rate exceeds 25%",
-  "metric": "block_rate",
-  "operator": "gt",
+  "metric": "blocked_rate",
+  "operator": ">",
   "threshold": 0.25,
-  "time_window": 15,
+  "time_window": "15m",
   "cooldown_minutes": 30,
   "is_enabled": true,
-  "project_id": "proj_abc123",
+  "last_triggered_at": null,
+  "last_value": null,
   "created_at": "2025-01-15T10:00:00Z",
   "updated_at": "2025-01-15T10:00:00Z"
 }
@@ -91,12 +93,6 @@ List all alert rules for a project.
 
 **Auth:** Session cookie or Bearer token
 
-#### Path Parameters
-
-| Parameter    | Type   | Description            |
-| ------------ | ------ | ---------------------- |
-| `project_id` | string | The project identifier |
-
 #### Example Request
 
 ```bash
@@ -107,22 +103,27 @@ curl https://app.collieai.io/api/v1/alerts/projects/proj_abc123/rules \
 #### Response -- `200 OK`
 
 ```json
-[
-  {
-    "id": "alert_rule_abc123",
-    "name": "High Block Rate",
-    "description": "Alert when block rate exceeds 25%",
-    "metric": "block_rate",
-    "operator": "gt",
-    "threshold": 0.25,
-    "time_window": 15,
-    "cooldown_minutes": 30,
-    "is_enabled": true,
-    "project_id": "proj_abc123",
-    "created_at": "2025-01-15T10:00:00Z",
-    "updated_at": "2025-01-15T10:00:00Z"
-  }
-]
+{
+  "alert_rules": [
+    {
+      "id": "alert_rule_abc123",
+      "project_id": "proj_abc123",
+      "name": "High Block Rate",
+      "description": "Alert when block rate exceeds 25%",
+      "metric": "blocked_rate",
+      "operator": ">",
+      "threshold": 0.25,
+      "time_window": "15m",
+      "cooldown_minutes": 30,
+      "is_enabled": true,
+      "last_triggered_at": null,
+      "last_value": null,
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
 ```
 
 #### Error Responses
@@ -140,25 +141,18 @@ Update an alert rule. All fields are optional.
 
 **Auth:** Session cookie or Bearer token
 
-#### Path Parameters
-
-| Parameter    | Type   | Description               |
-| ------------ | ------ | ------------------------- |
-| `project_id` | string | The project identifier    |
-| `rule_id`    | string | The alert rule identifier |
-
 #### Request Body
 
-| Field              | Type    | Description                    |
-| ------------------ | ------- | ------------------------------ |
-| `name`             | string  | New rule name                  |
-| `description`      | string  | New rule description           |
-| `metric`           | string  | Updated metric                 |
-| `operator`         | string  | Updated operator               |
-| `threshold`        | number  | Updated threshold              |
-| `time_window`      | integer | Updated time window in minutes |
-| `cooldown_minutes` | integer | Updated cooldown               |
-| `is_enabled`       | boolean | Enable or disable the rule     |
+| Field              | Type    | Description                              |
+| ------------------ | ------- | ---------------------------------------- |
+| `name`             | string  | New rule name                            |
+| `description`      | string  | New rule description                     |
+| `metric`           | string  | Updated metric                           |
+| `operator`         | string  | Updated operator                         |
+| `threshold`        | number  | Updated threshold                        |
+| `time_window`      | string  | Updated window (`5m`, `15m`, `1h`)       |
+| `cooldown_minutes` | integer | Updated cooldown (1–1440)                |
+| `is_enabled`       | boolean | Enable or disable the rule               |
 
 #### Example Request
 
@@ -172,24 +166,7 @@ curl -X PATCH https://app.collieai.io/api/v1/alerts/projects/proj_abc123/rules/a
   }'
 ```
 
-#### Response -- `200 OK`
-
-```json
-{
-  "id": "alert_rule_abc123",
-  "name": "High Block Rate",
-  "description": "Alert when block rate exceeds 25%",
-  "metric": "block_rate",
-  "operator": "gt",
-  "threshold": 0.30,
-  "time_window": 15,
-  "cooldown_minutes": 30,
-  "is_enabled": false,
-  "project_id": "proj_abc123",
-  "created_at": "2025-01-15T10:00:00Z",
-  "updated_at": "2025-01-15T11:00:00Z"
-}
-```
+Returns the updated alert rule (same shape as the create response).
 
 #### Error Responses
 
@@ -207,20 +184,6 @@ Delete an alert rule. Previously generated events are preserved.
 
 **Auth:** Session cookie or Bearer token
 
-#### Path Parameters
-
-| Parameter    | Type   | Description               |
-| ------------ | ------ | ------------------------- |
-| `project_id` | string | The project identifier    |
-| `rule_id`    | string | The alert rule identifier |
-
-#### Example Request
-
-```bash
-curl -X DELETE https://app.collieai.io/api/v1/alerts/projects/proj_abc123/rules/alert_rule_abc123 \
-  -H "Authorization: Bearer <token>"
-```
-
 #### Response -- `204 No Content`
 
 No response body.
@@ -234,25 +197,21 @@ No response body.
 
 ## Alert Events
 
+When a rule's condition is met, CollieAi records an **alert event**. Events are surfaced in the dashboard (there is no email/webhook push); poll these endpoints or the unread count to react to them.
+
 ### GET /api/v1/alerts/projects/{project\_id}/events
 
-List alert events for a project, ordered newest first.
+List alert events for a project, newest first.
 
 **URL:** `https://app.collieai.io/api/v1/alerts/projects/{project_id}/events`
 
 **Auth:** Session cookie or Bearer token
 
-#### Path Parameters
-
-| Parameter    | Type   | Description            |
-| ------------ | ------ | ---------------------- |
-| `project_id` | string | The project identifier |
-
 #### Query Parameters
 
 | Parameter | Type    | Required | Description                             |
 | --------- | ------- | -------- | --------------------------------------- |
-| `limit`   | integer | No       | Number of events to return. Default: 20 |
+| `limit`   | integer | No       | Number of events to return. Default: 50 |
 | `offset`  | integer | No       | Number of events to skip. Default: 0    |
 
 #### Example Request
@@ -270,14 +229,16 @@ curl "https://app.collieai.io/api/v1/alerts/projects/proj_abc123/events?limit=10
     {
       "id": "evt_abc123",
       "alert_rule_id": "alert_rule_abc123",
+      "project_id": "proj_abc123",
       "alert_rule_name": "High Block Rate",
-      "metric": "block_rate",
-      "metric_value": 0.32,
+      "metric": "blocked_rate",
+      "operator": ">",
       "threshold": 0.25,
-      "operator": "gt",
-      "is_acknowledged": false,
-      "triggered_at": "2025-01-15T10:15:00Z",
-      "acknowledged_at": null
+      "actual_value": 0.32,
+      "time_window": "15m",
+      "is_read": false,
+      "acknowledged_at": null,
+      "created_at": "2025-01-15T10:15:00Z"
     }
   ],
   "total": 24,
@@ -294,32 +255,18 @@ curl "https://app.collieai.io/api/v1/alerts/projects/proj_abc123/events?limit=10
 
 ### POST /api/v1/alerts/projects/{project\_id}/events/{event\_id}/acknowledge
 
-Acknowledge a single alert event.
+Acknowledge (mark read) a single alert event.
 
 **URL:** `https://app.collieai.io/api/v1/alerts/projects/{project_id}/events/{event_id}/acknowledge`
 
 **Auth:** Session cookie or Bearer token
-
-#### Path Parameters
-
-| Parameter    | Type   | Description                |
-| ------------ | ------ | -------------------------- |
-| `project_id` | string | The project identifier     |
-| `event_id`   | string | The alert event identifier |
-
-#### Example Request
-
-```bash
-curl -X POST https://app.collieai.io/api/v1/alerts/projects/proj_abc123/events/evt_abc123/acknowledge \
-  -H "Authorization: Bearer <token>"
-```
 
 #### Response -- `200 OK`
 
 ```json
 {
   "id": "evt_abc123",
-  "is_acknowledged": true,
+  "is_read": true,
   "acknowledged_at": "2025-01-15T10:20:00Z"
 }
 ```
@@ -339,19 +286,6 @@ Acknowledge all unread alert events for a project.
 
 **Auth:** Session cookie or Bearer token
 
-#### Path Parameters
-
-| Parameter    | Type   | Description            |
-| ------------ | ------ | ---------------------- |
-| `project_id` | string | The project identifier |
-
-#### Example Request
-
-```bash
-curl -X POST https://app.collieai.io/api/v1/alerts/projects/proj_abc123/events/acknowledge-all \
-  -H "Authorization: Bearer <token>"
-```
-
 #### Response -- `200 OK`
 
 ```json
@@ -360,33 +294,13 @@ curl -X POST https://app.collieai.io/api/v1/alerts/projects/proj_abc123/events/a
 }
 ```
 
-#### Error Responses
-
-| Status | Description       |
-| ------ | ----------------- |
-| `401`  | Not authenticated |
-| `404`  | Project not found |
-
 ### GET /api/v1/alerts/projects/{project\_id}/unread-count
 
-Get the count of unacknowledged alert events.
+Get the count of unread alert events.
 
 **URL:** `https://app.collieai.io/api/v1/alerts/projects/{project_id}/unread-count`
 
 **Auth:** Session cookie or Bearer token
-
-#### Path Parameters
-
-| Parameter    | Type   | Description            |
-| ------------ | ------ | ---------------------- |
-| `project_id` | string | The project identifier |
-
-#### Example Request
-
-```bash
-curl https://app.collieai.io/api/v1/alerts/projects/proj_abc123/unread-count \
-  -H "Authorization: Bearer <token>"
-```
 
 #### Response -- `200 OK`
 
@@ -395,10 +309,3 @@ curl https://app.collieai.io/api/v1/alerts/projects/proj_abc123/unread-count \
   "unread_count": 3
 }
 ```
-
-#### Error Responses
-
-| Status | Description       |
-| ------ | ----------------- |
-| `401`  | Not authenticated |
-| `404`  | Project not found |

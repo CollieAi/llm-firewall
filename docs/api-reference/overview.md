@@ -75,7 +75,7 @@ All errors follow an OpenAI-compatible shape:
 | `not_found_error`       | 404  | The requested resource does not exist.                           |
 | `validation_error`      | 422  | One or more fields failed validation.                            |
 | `rate_limit_exceeded`   | 429  | Too many requests. Back off and retry.                           |
-| `provider_error`        | 502  | The upstream LLM provider returned an error.                     |
+| `billing_limit`         | 429  | Monthly plan quota exceeded (see Rate Limiting).                 |
 | `internal_error`        | 500  | An unexpected server error occurred.                             |
 
 ## Rate Limiting

@@ -85,7 +85,7 @@ When a request comes from an IP not in the allowlist:
 {
   "error": {
     "message": "IP address not allowed",
-    "type": "permission_error",
+    "type": "forbidden_error",
     "code": 403
   }
 }

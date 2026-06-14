@@ -27,22 +27,24 @@ Every error response follows the same structure:
 | --------- | -------------- | -------------------------------------------------------- |
 | `message` | string         | A human-readable explanation of what went wrong.         |
 | `type`    | string         | The category of error (see table below).                 |
-| `code`    | string or null | A machine-readable error code for programmatic handling. |
+| `code`    | string, int, or null | Machine-readable code: a string for policy/route errors (e.g. `content_blocked`); the numeric HTTP status for auth/validation errors; may be null. |
 
 ## Error Types
 
-| HTTP Status | Type                    | Code               | Description                                                 |
-| ----------- | ----------------------- | ------------------ | ----------------------------------------------------------- |
-| 400         | `policy_violation`      | `content_blocked`  | An input rule blocked the user's message.                   |
-| 400         | `policy_violation`      | `response_blocked` | An output rule blocked the model's response.                |
-| 400         | `invalid_request_error` | --                 | The request body is malformed or missing required fields.   |
-| 401         | `authentication_error`  | `invalid_api_key`  | The API key is missing, malformed, or does not exist.       |
-| 401         | `authentication_error`  | `expired_api_key`  | The API key has passed its expiration date.                 |
-| 403         | `permission_error`      | `project_inactive` | The project associated with the API key is disabled.        |
-| 403         | `permission_error`      | `ip_not_allowed`   | The request IP is not in the account's IP allowlist.        |
-| 429         | `rate_limit_exceeded`   | --                 | Too many requests. Back off and retry.                      |
-| 500         | `internal_error`        | --                 | An unexpected error on the CollieAi side.                   |
-| 502         | `upstream_error`        | --                 | The upstream provider returned an error or was unreachable. |
+| HTTP Status | Type                    | Code               | Description                                                          |
+| ----------- | ----------------------- | ------------------ | ------------------------------------------------------------------- |
+| 400         | `policy_violation`      | `content_blocked`  | An input rule blocked the user's message.                           |
+| 400         | `policy_violation`      | `response_blocked` | An output rule blocked the model's response.                        |
+| 400         | `invalid_request_error` | `400`              | The request body is malformed or missing required fields.           |
+| 401         | `authentication_error`  | `401`              | The API key is missing, malformed, expired, or does not exist.      |
+| 403         | `forbidden_error`       | `403`              | The account is disabled, or the request IP is not in the allowlist. |
+| 404         | `not_found_error`       | `404`              | The model or resource was not found.                                |
+| 422         | `validation_error`      | `422`              | The request failed schema validation.                               |
+| 429         | `rate_limit_exceeded`   | --                 | Per-project rate limit exceeded. Back off and retry.                |
+| 429         | `billing_limit`         | --                 | Monthly plan quota exceeded.                                        |
+| 500         | `internal_error`        | --                 | An unexpected error on the CollieAi side.                           |
+
+Upstream provider errors are **passed through** with the provider's own HTTP status and a `type` derived from it (e.g. a provider `429` becomes `rate_limit_exceeded`, a provider `5xx` becomes `internal_error`). CollieAi does not wrap them in a `502`.
 
 ## Policy Violation Responses
 
@@ -200,10 +202,11 @@ def send_message(user_input: str) -> str:
             # Output rule blocked the model's response
             return "The model's response was blocked by a security policy."
 
-        if e.code == "project_inactive":
-            return "This project is currently disabled."
+        if e.status_code in (401, 403):
+            # Authentication failure or IP not in the allowlist
+            return "Authentication failed. Check your API key and IP allowlist."
 
-        # Catch-all for other API errors (upstream_error, internal_error, etc.)
+        # Catch-all for other API errors (rate_limit_exceeded, internal_error, etc.)
         return f"An error occurred: {e.message}"
 ```
 
@@ -307,8 +310,9 @@ async function sendMessage(userInput) {
       if (error.code === "response_blocked") {
         return "The model's response was blocked by a security policy.";
       }
-      if (error.code === "project_inactive") {
-        return "This project is currently disabled.";
+      if (error.status === 401 || error.status === 403) {
+        // Authentication failure or IP not in the allowlist
+        return "Authentication failed. Check your API key and IP allowlist.";
       }
       return `An error occurred: ${error.message}`;
     }
@@ -395,13 +399,13 @@ try {
 
 ### Why am I getting authentication errors?
 
-**Symptom:** You receive a 401 error with `invalid_api_key` or `expired_api_key`.
+**Symptom:** You receive a 401 `authentication_error` (the API key is missing, invalid, or expired).
 
 **Steps to resolve:**
 
 1. Verify your API key starts with `clai_`.
 2. Confirm the key has not expired by checking the dashboard.
-3. Ensure the associated project is active (an inactive project returns `project_inactive`).
+3. A disabled account or a request from an IP outside your allowlist returns `403 forbidden_error`.
 4. Check that the `Authorization` header is formatted as `Bearer clai_your_api_key_here`.
 5. If using environment variables, confirm `OPENAI_API_KEY` is set to your CollieAi key (not your OpenAI key).
 

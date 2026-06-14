@@ -123,20 +123,22 @@ data: [DONE]
 
 ### Error Responses
 
-| Status | Code                  | Description                            |
-| ------ | --------------------- | -------------------------------------- |
-| `400`  | `content_blocked`     | Input message blocked by policy rule   |
-| `400`  | `response_blocked`    | Output response blocked by policy rule |
-| `401`  | `invalid_api_key`     | Missing or invalid API key             |
-| `429`  | `rate_limit_exceeded` | Too many requests                      |
-| `502`  | `upstream_error`      | Upstream LLM provider error            |
+| Status | Type                   | Code               | Description                              |
+| ------ | ---------------------- | ------------------ | ---------------------------------------- |
+| `400`  | `policy_violation`     | `content_blocked`  | Input message blocked by a policy rule   |
+| `400`  | `policy_violation`     | `response_blocked` | Output response blocked by a policy rule |
+| `401`  | `authentication_error` | `401`              | Missing, invalid, or expired API key     |
+| `429`  | `rate_limit_exceeded`  | --                 | Per-project rate limit exceeded          |
+| `429`  | `billing_limit`        | --                 | Monthly plan quota exceeded              |
+
+Upstream provider errors are passed through with the provider's status code and a `type` derived from it.
 
 ```json
 {
   "error": {
     "message": "Request blocked by rule: PII Detection",
-    "type": "content_blocked",
-    "code": 400
+    "type": "policy_violation",
+    "code": "content_blocked"
   }
 }
 ```
