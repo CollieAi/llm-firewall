@@ -38,14 +38,14 @@ sequenceDiagram
     M-->>B: chunk 0
     B->>C: POST /chunks (sequence 0, content)
     C-->>B: emits safe text
-    C-->>U: SSE event (safe text)
+    B-->>U: SSE event (backend relays safe text)
     M-->>B: chunk 1
     B->>C: POST /chunks (sequence 1, content)
     Note over B,C: ...continues...
     M-->>B: final chunk
     B->>C: POST /chunks (sequence N, is_final true)
     C-->>B: emits final, finished true
-    C-->>U: SSE end event
+    B-->>U: SSE end event (relayed)
 ```
 
 You always have two delivery paths to the end user:

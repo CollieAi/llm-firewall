@@ -48,6 +48,8 @@ flowchart TD
     API --> Redis[("Redis<br/>cache + queues")]
     API --> CH[("ClickHouse<br/>analytics / logs")]
     Redis --> Worker["Background Worker<br/>Filtering · Webhooks · Alerts"]
+    Worker --> PG
+    Worker --> CH
 ```
 
 The API server handles all HTTP traffic: proxy requests, REST endpoints, and the frontend dashboard. When an async job is created, the API enqueues work into Redis. The background worker picks up jobs from Redis queues, runs security filtering, delivers webhooks, and evaluates alert conditions.
