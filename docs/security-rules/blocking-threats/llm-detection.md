@@ -113,7 +113,7 @@ Models with 7B+ parameters are automatically loaded with 8-bit quantization (`bi
 
 | Option              | Type   | Default                      | Description                                                 |
 | ------------------- | ------ | ---------------------------- | ----------------------------------------------------------- |
-| `model_id`          | string | `Qwen/Qwen2.5-1.5B-Instruct` | Generative model identifier                                 |
+| `model_id`          | string | first allowlisted model      | Generative model identifier. If omitted, CollieAi uses the first model (alphabetical) in your deployment's allowlist; set explicitly to pin one. |
 | `threshold`         | float  | `0.70`                       | Confidence threshold (0.0-1.0)                              |
 | `max_input_chars`   | int    | `4000`                       | Max input characters to process                             |
 | `max_new_tokens`    | int    | `10`                         | Max tokens to generate (default prompt outputs single word) |

@@ -247,7 +247,7 @@ New projects automatically get `pii-masking-standard` (the default). High-securi
 
 ## Next steps
 
-* [Security Rules](../security-rules/overview.md) — learn about the 9 rule types you can add to a policy.
+* [Security Rules](../security-rules/overview.md) — learn about the 10 rule types you can add to a policy.
 * [Enforcement Mode](../security-rules/enforcement-mode.md) — monitor vs. enforce and the precedence table.
 * [Projects](projects.md) — manage the environments that use your policies.
 * [Dictionaries](dictionaries.md) — word lists used by dictionary matching rules.

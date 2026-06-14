@@ -24,7 +24,7 @@ The Lightweight Model rule type enables detection of **prompt injection** and **
 
 * CollieAi detects prompt injection and jailbreak attempts with pre-trained ML classifiers (the `lightweight_model` rule type).
 * Inference is fast — 10–50 ms on CPU, 2–10 ms on GPU — for high-throughput, first-line defense.
-* Available models include Sentinel v2 (default), DeBERTa v3, and PromptGuard, each with a configurable confidence threshold (0.8 recommended).
+* Available models include Sentinel v2, DeBERTa v3, and PromptGuard, each with a configurable confidence threshold (0.8 recommended). Set `model_id` explicitly; if omitted, CollieAi uses the first model in your deployment's allowlist.
 * A `min_length` setting and language-based routing reduce false positives, and long messages are scanned with overlapping windows.
 {% endhint %}
 
@@ -34,7 +34,7 @@ The Lightweight Model rule type enables detection of **prompt injection** and **
 **The model dropdown in your dashboard shows what's available on YOUR deploy.** The exact list depends on what your operator has configured for this host. The two classifiers documented below are typically available on managed deploys; self-hosted deployments may show additional options (such as `codeintegrity-ai/promptguard`) or a narrowed set.
 {% endhint %}
 
-### 1. Sentinel v2 (Default)
+### 1. Sentinel v2 (Recommended)
 
 | Property         | Value                                              |
 | ---------------- | -------------------------------------------------- |
@@ -370,7 +370,7 @@ For API-based rule creation:
 
 | Property                       | Type   | Default                                 | Description                                                     |
 | ------------------------------ | ------ | --------------------------------------- | --------------------------------------------------------------- |
-| `model_id`                     | string | `qualifire/...sentinel-v2`              | HuggingFace model ID                                            |
+| `model_id`                     | string | first allowlisted model                 | HuggingFace model ID. If omitted, CollieAi uses the first model (alphabetical) in your deployment's allowlist; set explicitly to pin one. |
 | `model_revision`               | string | `null`                                  | Git commit hash for version pinning                             |
 | `threshold`                    | float  | `0.80`                                  | Confidence threshold (0.0-1.0)                                  |
 | `labels_to_block`              | list   | `["jailbreak", "INJECTION", "LABEL_1"]` | Labels that trigger                                             |
