@@ -40,7 +40,7 @@ Authorization: Bearer clai_xxx
 
 ### Field Combination Behavior
 
-| Fields Provided                        | Input Filtering    | Output Filtering | Webhooks Delivered                     |
+| Fields Provided                        | Input Filtering    | Output Filtering | Terminal event (webhook if set)                     |
 | -------------------------------------- | ------------------ | ---------------- | -------------------------------------- |
 | `message`                              | Yes (legacy rules) | No               | `job.inbound_complete`                 |
 | `message_input`                        | Yes                | No               | `job.inbound_complete`                 |

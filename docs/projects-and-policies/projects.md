@@ -44,7 +44,7 @@ curl -X POST https://app.collieai.io/api/v1/projects \
   "name": "production-chatbot",
   "description": "Customer-facing AI assistant",
   "active_policy_id": "e5f6a7b8-...",
-  "filter_all_messages": true,
+  "filter_all_messages": false,
   "api_key": {
     "id": "k1l2m3n4-...",
     "name": "production-chatbot-key",

@@ -70,7 +70,7 @@ Get the current user's subscription plan, usage, and limits.
     "reset_at": "2026-05-01T00:00:00Z"
   },
   "limits": {
-    "monthly_api_calls": 15000,
+    "monthly_api_calls": 20000,
     "max_prompt_tokens": 10000,
     "max_projects": 1
   },
