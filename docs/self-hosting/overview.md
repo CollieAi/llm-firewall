@@ -64,7 +64,7 @@ CollieAi uses optional machine learning models for advanced security rules:
 | **LLM detection**           | Generative AI-based threat detection               | Default: Qwen2.5-0.5B-Instruct. Qwen3-8B available as opt-in higher-quality classifier (8-bit, ≥10 GB VRAM). See [LLM Detection rule docs](../security-rules/blocking-threats/llm-detection.md). |
 | **Language detection**      | Identify message language for language-based rules | FastText lid.176.ftz                                                                                                                                                                             |
 
-Models are **auto-downloaded from HuggingFace** on first startup when `PRELOAD_MODELS=true`. A valid `HF_TOKEN` is required for gated models. Set `PRELOAD_MODELS=false` to skip model loading for faster startup during development (rules that depend on ML models will silently fail open).
+Models are **auto-downloaded from HuggingFace** on first startup when `PRELOAD_MODELS=true`. No currently-bundled model requires authentication, so `HF_TOKEN` can be left blank; set it only if you add a gated HuggingFace model. Set `PRELOAD_MODELS=false` to skip model loading for faster startup during development (rules that depend on ML models will silently fail open).
 
 ## How does billing work when self-hosting?
 
