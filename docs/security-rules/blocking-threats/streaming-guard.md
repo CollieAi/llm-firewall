@@ -90,7 +90,7 @@ Each of the 8 categories has its own decision:
 | `Self-Harm`      | `block`   | Hard safety risk                                            |
 | `Illegal Acts`   | `block`   | Legal exposure                                              |
 | `Unethical`      | `block`   | Brand risk                                                  |
-| `PII`            | `mask`    | Coarse redaction is better than blocking the whole response |
+| `PII`            | `monitor` | Observe & log by default; set `mask`/`block` to redact      |
 | `Political`      | `monitor` | High false-positive rate; observe before enforcing          |
 | `Copyright`      | `monitor` | Same — operators should tune to their actual exposure       |
 
