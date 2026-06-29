@@ -53,6 +53,37 @@ if (result.blocked) return result.blockMessage ?? "Input blocked by policy.";
 A policy block is a normal result (`result.blocked === true`), not an error.
 No webhook is required — the SDK polls for you.
 
+## Analyze context alongside the prompt
+
+Pass `context` to analyze the data you're about to send the model — retrieved
+documents, tool output, a record — alongside the prompt. Structured `context`
+travels as JSON; `contextFormat` (`"auto"` | `"json"` | `"text"`) is an optional
+hint for a raw string.
+
+```ts
+const result = await collie.moderate.input({
+  prompt: userPrompt,
+  context: { transaction: { memo: retrievedMemo } },
+});
+
+const ctx = result.context;
+if (ctx && ctx.status !== "clean" && ctx.status !== "not_provided") {
+  console.log(ctx.status, ctx.triggeringPointer, ctx.triggeringRuleType); // path, never a value
+}
+if (result.blocked) return result.blockMessage ?? "Blocked by policy.";
+// result.blockedBy is "prompt" | "context" | "none"
+```
+
+`result.context` carries the closed `status` enum, the triggering JSON Pointer +
+rule, and degraded markers; the pointer is a **path, never a value**. The same
+`context` works on `protectStream` / `protectBuffered` when input checking is
+enabled. See [Context analysis](../security-rules/context-analysis.md).
+
+{% hint style="info" %}
+Until context analysis is enabled (host flag **and** policy switch), `context` is
+inert — a safe no-op.
+{% endhint %}
+
 ## Stream safely (Express)
 
 `protectStream` checks the input, calls your LLM **only if it passes**, batches

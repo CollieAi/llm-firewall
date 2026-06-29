@@ -54,6 +54,39 @@ if result.blocked:
 A policy block is a normal result (`result.blocked is True`), not an exception.
 No webhook is required — the SDK polls for you.
 
+## Analyze context alongside the prompt
+
+Pass `context` to analyze the data you're about to send the model — retrieved
+documents, tool output, a record — alongside the prompt, so an injection hidden in
+that data is caught too. Structured `context` travels as JSON; `context_format`
+(`"auto"` | `"json"` | `"text"`) is an optional hint for a raw string.
+
+```python
+result = await collie.moderate.input(
+    prompt=user_prompt,
+    context={"transaction": {"memo": retrieved_memo}},
+)
+
+if result.context and result.context.status in ("monitored", "blocked", "degraded"):
+    print(result.context.status,
+          result.context.triggering_pointer,     # e.g. "/transaction/memo" — a path, never a value
+          result.context.triggering_rule_type)
+
+if result.blocked:
+    # result.blocked_by is "prompt" or "context"
+    return result.block_message or "Blocked by policy."
+```
+
+`result.context` carries the closed `status` enum, the triggering JSON Pointer +
+rule, and degraded-coverage markers; the pointer is a **path, never a value**. The
+same `context` works on `protect_stream` / `protect_buffered` when input checking
+is enabled. See [Context analysis](../security-rules/context-analysis.md).
+
+{% hint style="info" %}
+Until context analysis is enabled (the deployment's host flag **and** the policy
+switch), `context` is inert — a safe no-op (`status` `disabled` / `not_provided`).
+{% endhint %}
+
 ## Stream safely (FastAPI)
 
 `protect_stream` checks the input, calls your LLM **only if it passes**, batches
