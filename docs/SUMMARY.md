@@ -61,6 +61,7 @@
 * [Text Processing](security-rules/text-processing/README.md)
   * [Normalization](security-rules/text-processing/normalization.md)
   * [Language detection](security-rules/text-processing/language-detection.md)
+* [Context analysis](security-rules/context-analysis.md)
 
 ## Monitoring
 

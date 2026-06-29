@@ -81,6 +81,40 @@ if (input.Blocked)
 A policy block is a normal result (`Blocked = true`), not an exception.
 No webhook is required — the SDK polls for you.
 
+## Analyze context alongside the prompt
+
+Set `Context` to analyze the data you're about to send the model — retrieved
+documents, tool output, a record — alongside the prompt. It travels as JSON with
+your keys preserved; `ContextFormat` (`"auto"` / `"json"` / `"text"`) is an
+optional hint for a raw string.
+
+```csharp
+var input = await collie.Moderation.CheckInputAsync(new InputModerationRequest
+{
+    Prompt = userPrompt,
+    Context = new Dictionary<string, object>
+    {
+        ["transaction"] = new Dictionary<string, object> { ["memo"] = retrievedMemo },
+    },
+});
+
+if (input.Context is { Status: not "clean" and not "not_provided" } ctx)
+    Console.WriteLine($"{ctx.Status} {ctx.TriggeringPointer} {ctx.TriggeringRuleType}"); // path, never a value
+
+if (input.Blocked)
+    return input.BlockMessage ?? "Blocked by policy.";   // input.BlockedBy: "prompt" | "context" | "none"
+```
+
+`input.Context` carries the closed `Status` string, the triggering JSON Pointer +
+rule, and degraded markers; the pointer is a **path, never a value**. `Context`
+works the same on `ProtectStreamAsync` / `ProtectBufferedAsync` when input checking
+is enabled. See [Context analysis](../security-rules/context-analysis.md).
+
+{% hint style="info" %}
+Until context analysis is enabled (host flag **and** policy switch), `Context` is
+inert — a safe no-op.
+{% endhint %}
+
 ## Stream safely (ASP.NET minimal API)
 
 `ProtectStreamAsync` checks the input, calls your LLM **only if it passes**,
