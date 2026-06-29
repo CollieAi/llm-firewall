@@ -213,6 +213,25 @@ Async jobs support **both** the request-header hashes above and
 separate steps, CollieAi persists the input-derived values on the job so the
 output step can suppress them.
 
+## Streaming
+
+Allowlist suppression works on **incremental (token-by-token) streaming**, not
+just buffered responses — on both the drop-in proxy's streaming responses and
+customer-owned chunk streaming, since both run through the same streaming engine.
+The streaming path shares its suppression logic with the buffered path, so an
+allowlisted value is suppressed identically either way.
+
+A few conditions:
+
+* It covers the rules that carry an allowlist — **regex** and **structured ID**.
+* The policy must be **streaming-eligible**. If it isn't (for example a policy
+  that must buffer), CollieAi buffers the response and applies the allowlist
+  there — suppression still happens, just not incrementally.
+* A detected value is matched within the rule's **streaming window**, so a value
+  split across or beyond that window may not be matched mid-stream. Keep the
+  window large enough for the values you allowlist (see the rule's
+  `streaming_window_chars`).
+
 ## Testing in the Playground
 
 The Playground has a **Known-good PII (allowlist)** field. Type plaintext sample
