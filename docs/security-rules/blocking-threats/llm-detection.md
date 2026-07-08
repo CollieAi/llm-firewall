@@ -122,7 +122,9 @@ Models with 7B+ parameters are automatically loaded with 8-bit quantization (`bi
 | `min_length`        | int    | `40`                         | Skip messages shorter than this                             |
 | `mask_placeholder`  | string | `[LLM_INJECTION_DETECTED]`   | Replacement text                                            |
 | `decision_on_error` | string | `allow`                      | `allow` or `block` on failure                               |
-| `system_prompt`     | string | null                         | Custom system prompt (advanced)                             |
+| `system_prompt`     | string | null                         | Custom system prompt (advanced). Combined with the built-in per `system_prompt_mode`. Blank/whitespace is treated as unset. |
+| `context_system_prompt` | string | null                     | Custom **context-analysis** prompt, used only when this rule classifies a context field (not the prompt). Blank = the built-in "CONTEXT-DATA MODE" prompt. |
+| `system_prompt_mode` | string | `replace`                   | How `system_prompt` **and** `context_system_prompt` combine with the built-ins: `replace` (override) or `append` (built-in first, then your text). |
 | `user_template`     | string | null                         | Custom user template (must contain `{message}`)             |
 
 ## Threshold Guidelines
@@ -179,6 +181,34 @@ You can also customize how the user message is presented:
 ```
 
 **Important**: Custom `user_template` MUST contain the `{message}` placeholder.
+
+### Replace vs. append (`system_prompt_mode`)
+
+By default (`replace`), a custom `system_prompt` **fully overrides** the
+built-in prompt — you lose its tuned few-shot examples (which keep benign
+messages like "describe yourself" or "let me talk to a real person" from being
+flagged), so a replacing prompt must be self-complete and must still make the
+model output `safe` or `injection`.
+
+Set `system_prompt_mode: "append"` to keep the built-in prompt and add your text
+after it — useful for layering a few extra rules on top of the tuned default
+without rewriting it. The mode governs both `system_prompt` and
+`context_system_prompt`. A blank/whitespace field always keeps the built-in.
+
+### Context analysis (`context_system_prompt`)
+
+When this rule runs inside **context analysis** (classifying a structured data
+field a customer sends alongside the prompt), the classifier is switched into a
+"CONTEXT-DATA MODE": stored data must never issue instructions to the assistant,
+so an imperative sitting in a data field ("translate this", "speak another
+language") is treated as an injection **even though the same words from the user
+would be a normal request**. The field's JSON Pointer is included so the model
+knows a URL under a `page` field is navigation, not a command.
+
+`context_system_prompt` lets you customize that CONTEXT-DATA MODE text (it
+combines with the built-in per `system_prompt_mode`). It is used **only** on the
+context path — a prompt-path (`message_input`) classification never sees it. If
+left blank, the built-in CONTEXT-DATA MODE prompt is used.
 
 ## How does LLM detection work?
 
