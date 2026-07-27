@@ -291,7 +291,7 @@ All errors use the OpenAI-compatible `{"error": {"message", "type", "code"}}` en
 
 | Status | Code                          | Description                                                                                                                                                                      |
 | ------ | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `400`  | `chunk_streaming_unsupported` | The project's active policy can't be served by the streaming engine (`streaming_mode = "buffered"`, multi-rule policy, or `STREAMING_MODES_ENABLED=false` on the host).          |
+| `400`  | `chunk_streaming_unsupported` | The project's active policy can't be served by the streaming engine (a full-context **enforcing** rule, `streaming_mode = "buffered"`, a multi-rule policy that can mutate text, or `STREAMING_MODES_ENABLED=false` on the host). Monitor-only rules do **not** cause this — they stream and observe. |
 | `401`  | -                             | Missing or invalid API key.                                                                                                                                                      |
 | `404`  | -                             | Job not found or not owned by the API key's project.                                                                                                                             |
 | `409`  | `chunk_sequence_conflict`     | `sequence` is not the next expected value (gap, or re-submitting an old sequence after later ones were accepted). Response includes `expected_sequence` and `received_sequence`. |
@@ -300,6 +300,7 @@ All errors use the OpenAI-compatible `{"error": {"message", "type", "code"}}` en
 | `409`  | `chunk_concurrent_submit`     | Another submit for the same job is in-flight. Submissions for one job must be serial; wait for the prior response.                                                               |
 | `409`  | `chunk_policy_changed`        | The project's policy changed mid-stream. Create a new job to use the updated policy.                                                                                             |
 | `409`  | `chunk_session_unrecoverable` | A prior commit left the job's stream in a state that can't be repaired. Create a new job.                                                                                        |
+| `503`  | `chunk_resolution_unavailable` | The server could not **resolve** the project's policy — a dependency was unreachable, not a policy problem. Retry the same sequence with backoff; retries are safe via idempotency. |
 | `504`  | `chunk_filter_timeout`        | Filtering exceeded the per-chunk budget. Retry the same sequence with backoff.                                                                                                   |
 
 ***
