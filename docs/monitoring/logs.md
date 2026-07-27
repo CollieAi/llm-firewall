@@ -91,8 +91,37 @@ Click any entry to open a detail view containing:
 * Timing details, including total duration and any available LLM, output-filter, or queue-wait latency.
 * All rules that were triggered.
 * The `request_id` (for chat events) or `job_id` (for job events), useful for correlating with your own systems.
+* The **conversation** id (when your client sent one), with a **View conversation** action to see the whole conversation in one thread.
 {% endstep %}
 {% endstepper %}
+
+## Session grouping (conversations)
+
+If your client sends a `conversation_id` when it creates a job — the SDK's `conversation_id` argument, or the `conversation_id` field on `POST /v1/jobs` — CollieAi stores it on every log entry for that request, so you can view a whole conversation as a single thread:
+
+{% stepper %}
+{% step %}
+### Open a log entry
+
+Open any entry and find its **Conversation** id in the detail view, then click **View conversation**.
+{% endstep %}
+
+{% step %}
+### Read the thread
+
+The list narrows to that conversation's turns, ordered **oldest-first** so it reads top-to-bottom like a transcript. The view is reflected in the page URL, so you can bookmark or share a link straight to a conversation.
+{% endstep %}
+
+{% step %}
+### Return to all logs
+
+Click **Clear** on the conversation banner to go back to the full list.
+{% endstep %}
+{% endstepper %}
+
+{% hint style="info" %}
+`conversation_id` is captured for **async jobs and SDK streaming**. Synchronous drop-in proxy requests (`/v1/chat/completions`, `/v1/messages`) don't carry it today.
+{% endhint %}
 
 ## Logs API
 
@@ -102,7 +131,7 @@ You can also query logs programmatically:
 GET /logs/api?event_type=chat.completion
 ```
 
-Use the `event_type` query parameter to filter results. This returns the same data shown in the dashboard, in JSON format.
+Use the `event_type` query parameter to filter results. Other filters include `conversation_id` — all turns of one conversation, e.g. `GET /logs/api?conversation_id=<id>`. This returns the same data shown in the dashboard, in JSON format.
 
 ## Retention and storage
 
