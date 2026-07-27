@@ -176,6 +176,8 @@ The error envelope is the same OpenAI-compatible shape used elsewhere: `{"error"
 | `chunk_streaming_unsupported`  | The project's policy can't stream (e.g. has an LLM-detection rule). Use the [synchronous `/response` endpoint](../api-reference/jobs.md#post-v1jobsjob_idresponse) instead, or split the policy. |
 | `chunk_session_unrecoverable`  | A prior commit failure left the stream in an unrepairable state (very rare). Create a new job.                                                                                                   |
 | `chunk_idempotency_conflict`   | You re-submitted a sequence with a different body. Use a new sequence number for new content.                                                                                                    |
+| `chunk_policy_changed`         | The project's policy changed mid-stream. Create a new job — it picks up the updated policy.                                                                                                      |
+| `chunk_resolution_unavailable` (`503`) | The server couldn't **resolve** the policy (a dependency outage, not a policy problem). Retry the SAME sequence with backoff; the SDKs do this automatically.                             |
 
 ## SSE consumer semantics
 
