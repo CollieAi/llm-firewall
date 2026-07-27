@@ -204,6 +204,55 @@ else
 }
 ```
 
+### Which rule is responsible — `cap.Rules`
+
+`cap.Rules` explains the verdict rule by rule. Each entry carries
+`ExecutionRole`, the role that rule plays in a streaming request:
+
+| `ExecutionRole` | meaning |
+| --- | --- |
+| `enforce_streaming` | blocks or masks **as tokens arrive** |
+| `enforce_postflight` | blocks or masks, but needs the **whole** response first — a policy containing one always buffers |
+| `stream_observed` | monitor-only; observed **as tokens arrive** while the text streams through untouched |
+| `postflight_observed` | monitor-only; observed after the response completes |
+| `null` | the rule could not be planned at all (e.g. an unrecognised type) |
+
+```csharp
+var blockers = cap.Rules
+    .Where(r => r.ExecutionRole == "enforce_postflight")
+    .Select(r => r.RuleName)
+    .ToList();
+
+if (blockers.Count > 0)
+    Console.WriteLine($"buffered because: {string.Join(", ", blockers)}");
+```
+
+{% hint style="info" %}
+`StreamingSupported` is `false` for **every** monitor rule, so it cannot tell a
+`stream_observed` rule from a `postflight_observed` one. Use `ExecutionRole`
+when you need that distinction — typically while running a policy in monitor
+mode before turning on blocking.
+{% endhint %}
+
+Three things `ExecutionRole` does not tell you. It is **per-rule** and ignores
+policy-level gates, so a rule can say `stream_observed` while the request still
+buffers — `cap.Mode` remains the answer to "does this request stream at all".
+It reflects your project's current streaming setting, so a project set to
+`buffered` reports full-context roles throughout. And it reflects the **server
+that answered**: on current servers a monitor-only policy streams — monitor
+rules observe the text as it passes and their findings appear in your CollieAi
+audit log only, never in the chunk responses your users see. A server that has
+not been upgraded yet still buffers any policy containing a monitor rule and
+answers `cap.Mode = "buffered"`, `cap.Reason = "monitor_mode"`; the SDK
+handles both, and `cap.Mode` is always the delivery verdict. The roles are
+what let you see, ahead of time, whether monitor→enforce will be a config flip
+or a re-integration.
+
+It is a `string` rather than an enum on purpose: compare against the names you
+know and fall through on anything else, so a role added later doesn't break
+your branch.
+
+
 ## Buffered fallback
 
 Same input gate and factory contract, but the whole response is checked at
@@ -292,8 +341,9 @@ not exceptions.
 | `ChunkSessionUnrecoverableException` | the stream entered an unrepairable state | start a new stream/session |
 | `ChunkQuotaExceededException` | rate-limited with no usable `Retry-After` | back off and retry later |
 | `ChunkStreamingUnsupportedException` | the policy can't be served by the streaming engine | use `ProtectBufferedAsync` instead |
+| `ChunkResolutionUnavailableException` | `503 chunk_resolution_unavailable` — the server couldn't **resolve** the policy (a dependency outage, not a policy shape) | nothing at first: the SDK retries it automatically; if the outage outlasts the retry budget it is the `InnerException` of `ChunkRetryExhaustedException` |
 | `BufferedFallbackRequiredException` | `RequireStreaming = true` but the policy must buffer | switch to `ProtectBufferedAsync` |
-| `ProjectNotFoundException` / `StreamingFeatureDisabledException` / `PlanNotEntitledException` / `UnknownRuleTypeException` / `PolicyNotStreamableException` (`PreflightException`) | preflight says the policy can't be served | fix project/policy configuration |
+| `ProjectNotFoundException` / `StreamingFeatureDisabledException` / `PlanNotEntitledException` / `UnknownRuleTypeException` / `PolicyNotStreamableException` (`PreflightException`) | preflight says the policy can't be served | fix project/policy configuration; other reason codes (e.g. `rule_unplannable`, `resolution_error:<cause>`) surface as the base `PreflightException` — treat the code as an open string |
 | `ProviderStreamFactoryRequiredException` | the factory returned null / an unusable stream | return a fresh `IAsyncEnumerable<string>` from the factory |
 | `ConcurrentSessionUseException` | overlapping `PushAsync` calls on one session | serialize submits per session |
 | `ModerationException` | `CheckInputAsync` job failed/expired or timed out | retry the input check |
@@ -303,7 +353,8 @@ not exceptions.
 ## Retry behavior
 
 The SDK retries the **same** chunk sequence on transient failures (network
-timeouts, `503`, `504 chunk_filter_timeout`, `429` with a usable `Retry-After`)
+timeouts, `503` — including the typed `chunk_resolution_unavailable` —
+`504 chunk_filter_timeout`, `429` with a usable `Retry-After`)
 with exponential backoff + jitter — default base 250 ms, max 4 s, 3 attempts
 per chunk, 10 s ceiling (configurable on `CollieClientOptions`). A retried
 chunk never produces a duplicate visible delta.

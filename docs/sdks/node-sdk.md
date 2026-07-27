@@ -190,6 +190,52 @@ Prefer not to branch yourself? Pass `requireStreaming: true` to `protectStream`:
 it preflights first and throws `BufferedFallbackRequired` (policy must buffer)
 or a `PreflightError` (can't be served) **before** calling your LLM.
 
+### Which rule is responsible — `cap.rules`
+
+`cap.rules` explains the verdict rule by rule. Each entry carries
+`executionRole`, the role that rule plays in a streaming request:
+
+| `executionRole` | meaning |
+| --- | --- |
+| `enforce_streaming` | blocks or masks **as tokens arrive** |
+| `enforce_postflight` | blocks or masks, but needs the **whole** response first — a policy containing one always buffers |
+| `stream_observed` | monitor-only; observed **as tokens arrive** while the text streams through untouched |
+| `postflight_observed` | monitor-only; observed after the response completes |
+| `null` | the rule could not be planned at all (e.g. an unrecognised type) |
+
+```ts
+const blockers = cap.rules.filter((r) => r.executionRole === "enforce_postflight");
+if (blockers.length) {
+  console.log("buffered because:", blockers.map((r) => r.ruleName).join(", "));
+}
+```
+
+{% hint style="info" %}
+`streamingSupported` is `false` for **every** monitor rule, so it cannot tell a
+`stream_observed` rule from a `postflight_observed` one. Use `executionRole`
+when you need that distinction — typically while running a policy in monitor
+mode before turning on blocking.
+{% endhint %}
+
+Three things `executionRole` does not tell you. It is **per-rule** and ignores
+policy-level gates, so a rule can say `stream_observed` while the request still
+buffers — `cap.mode` remains the answer to "does this request stream at all".
+It reflects your project's current streaming setting, so a project set to
+`buffered` reports full-context roles throughout. And it reflects the **server
+that answered**: on current servers a monitor-only policy streams — monitor
+rules observe the text as it passes and their findings appear in your CollieAi
+audit log only, never in the chunk responses your users see. A server that has
+not been upgraded yet still buffers any policy containing a monitor rule and
+answers `cap.mode = "buffered"`, `cap.reason = "monitor_mode"`; the SDK
+handles both, and `cap.mode` is always the delivery verdict. The roles are
+what let you see, ahead of time, whether monitor→enforce will be a config flip
+or a re-integration.
+
+The `ExecutionRole` type keeps an open `string` arm on purpose: compare against
+the names you know and fall through on anything else, so a role added later
+doesn't break your branch.
+
+
 ## Buffered fallback
 
 When a policy can't stream, check the whole response at once — same input gate
@@ -283,8 +329,9 @@ errors.
 | `ChunkSessionUnrecoverable` | the stream entered an unrepairable state | start a new stream/session |
 | `ChunkQuotaExceeded` | rate-limited with no usable `Retry-After` | back off and retry later |
 | `ChunkStreamingUnsupported` | the policy can't be served by the streaming engine | use `protectBuffered` instead |
+| `ChunkResolutionUnavailable` | `503 chunk_resolution_unavailable` — the server couldn't **resolve** the policy (a dependency outage, not a policy shape) | nothing at first: the SDK retries it automatically; if the outage outlasts the retry budget it is the `cause` of `ChunkRetryExhausted` |
 | `BufferedFallbackRequired` | `requireStreaming: true` but the policy must buffer | switch to `protectBuffered` |
-| `ProjectNotFound` / `StreamingFeatureDisabled` / `PlanNotEntitled` / `UnknownRuleType` / `PolicyNotStreamable` (`PreflightError`) | preflight says the policy can't be served | fix project/policy configuration |
+| `ProjectNotFound` / `StreamingFeatureDisabled` / `PlanNotEntitled` / `UnknownRuleType` / `PolicyNotStreamable` (`PreflightError`) | preflight says the policy can't be served | fix project/policy configuration; other reason codes (e.g. `rule_unplannable`, `resolution_error:<cause>`) surface as the base `PreflightError` — treat the code as an open string |
 | `ProviderStreamFactoryRequired` | passed a started stream (or non-async-iterable) instead of a factory | pass a factory returning a fresh async iterable: `(signal) => myStream(signal)` |
 | `ConcurrentSessionUseError` | overlapping `push()` calls on one low-level session | serialize submits per session |
 | `ModerationError` | `moderate.input` job failed/expired or timed out | retry the input check |
@@ -294,7 +341,8 @@ errors.
 ## Retry behavior
 
 The SDK retries the **same** chunk sequence on transient failures (network
-timeouts, `503`, `504 chunk_filter_timeout`, `429` with a usable `Retry-After`)
+timeouts, `503` — including the typed `chunk_resolution_unavailable` —
+`504 chunk_filter_timeout`, `429` with a usable `Retry-After`)
 with exponential backoff + jitter — default base 250 ms, max 4 s, 3 attempts per
 chunk, 10 s ceiling (`new CollieClient({ retryMaxPerChunkS: ... })`). A retried
 chunk never produces a duplicate visible delta.
