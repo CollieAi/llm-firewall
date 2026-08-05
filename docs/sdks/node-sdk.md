@@ -372,6 +372,88 @@ with exponential backoff + jitter — default base 250 ms, max 4 s, 3 attempts p
 chunk, 10 s ceiling (`new CollieClient({ retryMaxPerChunkS: ... })`). A retried
 chunk never produces a duplicate visible delta.
 
+## Failure policy: fail-closed by default
+
+When retries are exhausted the SDK **fails closed** — it throws and releases no
+text. There is no fail-open switch: shipping unchecked model output is a risk
+decision only you can make, so it has to be your explicit code, not a default.
+
+Two things decide what that code should do.
+
+**1. Where you caught it.** `rawStreamFactory` is a deferred factory: the SDK
+calls it exactly once, *after* the input check passes and the session exists. So
+if CollieAi is unreachable, the failure lands before your LLM ever ran — nothing
+was generated, nothing reached the user, and passing through is a clean choice.
+A failure *mid-stream* is different: some text is already on screen and the
+engine is holding more, so re-running the model would duplicate output. Track it
+with one flag.
+
+**2. Not every `CollieError` is an outage.** `ChunkStreamingUnsupported` means
+the policy demands buffered checking, and `ChunkRetryExhausted` means a
+mid-stream abort. Treating the base class as an outage would bypass a policy
+that deliberately asked to inspect the whole answer. Match the transport
+failures — `CollieConnectionError` and `CollieApiError` with a 5xx — and nothing
+else.
+
+```ts
+import {
+  BufferedFallbackRequired, ChunkStreamingUnsupported,
+  CollieApiError, CollieConnectionError, CollieError,
+} from "@collieai/sdk";
+
+let started = false;
+const rawStreamFactory = () => customerLlm(prompt);
+
+try {
+  for await (const ev of collie.streaming.protectStream({ input: prompt, rawStreamFactory })) {
+    if (ev.type === "delta") {
+      started = true;
+      await write(ev.text);
+    } else if (ev.type === "input_blocked") {
+      await write(ev.blockMessage ?? "Request rejected."); return;
+    } else if (ev.type === "blocked") {
+      await write(ev.blockMessage ?? "Response rejected."); return;
+    }
+  }
+} catch (e) {
+  // Fail-open ONLY on infrastructure failure AND only before the first delta.
+  const infra =
+    e instanceof CollieConnectionError ||
+    (e instanceof CollieApiError && (e.statusCode ?? 0) >= 500);
+  if (infra && FAIL_OPEN_ALLOWED && !started) {
+    for await (const delta of customerLlm(prompt)) await write(delta); // unfiltered
+    return;
+  }
+  // Policy demands buffered checking -- an instruction, not an outage. The
+  // !started guard avoids re-emitting an answer the user has already partly seen.
+  // NOTE: protectBuffered re-invokes your LLM — a second, billable generation.
+  if ((e instanceof BufferedFallbackRequired || e instanceof ChunkStreamingUnsupported) && !started) {
+    const r = await collie.streaming.protectBuffered({ input: prompt, rawStreamFactory });
+    await write(r.blocked ? (r.blockMessage ?? "Response rejected.") : (r.filteredText ?? ""));
+    return;
+  }
+  // Everything else, including a mid-stream abort.
+  if (e instanceof CollieError) {
+    await write("Could not verify the response. Please try again.");
+    return;
+  }
+  throw e;
+}
+```
+
+An `AbortError` from your own `AbortSignal` is not a `CollieError`, so a client
+disconnect never triggers fail-open.
+
+If you need fail-open **mid-stream** too, you must tee the provider stream: wrap
+your LLM iterable so deltas also accumulate in a local buffer, then on failure
+emit `buffer.slice(alreadyWrittenChars)` and continue raw. Without the tee the
+text the engine was still holding is lost and the answer has a hole in the
+middle.
+
+Whatever you choose, make fail-open **observable**: log every occurrence and put
+it behind a flag you can turn off. A silent `catch` means an outage can leave you
+serving unchecked model output for hours with everything looking healthy.
+
 ## Advanced: low-level session
 
 If you need to drive batching yourself, use the session directly. It does
