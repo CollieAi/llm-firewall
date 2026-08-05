@@ -84,6 +84,31 @@ Until context analysis is enabled (host flag **and** policy switch), `context` i
 inert — a safe no-op.
 {% endhint %}
 
+## Check an output produced outside a wrapper
+
+`protectStream` / `protectBuffered` already moderate the streamed answer. Use
+`moderate.output` for assistant text that never went through a wrapper —
+proactive notifications, escalation messages, any side channel. Don't route
+such text through `moderate.input`: that evaluates it with **input** rules, so
+output-safety and masking rules silently never run, and injection detectors can
+false-block assistant-style imperatives ("You need to submit…").
+
+```ts
+const result = await collie.moderate.output({
+  response: assistantText,
+  conversationId,          // optional
+  correlationId: noteId,   // optional
+});
+
+if (result.blocked) return; // don't send it
+send(result.filteredText ?? assistantText); // masking applies here
+```
+
+`filteredText` carries the **masked** output — send it, not the original, or
+masking rules silently do nothing. `moderate.output` takes no `context`:
+context is an input surface; for context-aware output filtering use
+`protectBuffered` / `protectStream`.
+
 ## Stream safely (Express)
 
 `protectStream` checks the input, calls your LLM **only if it passes**, batches
@@ -334,7 +359,7 @@ errors.
 | `ProjectNotFound` / `StreamingFeatureDisabled` / `PlanNotEntitled` / `UnknownRuleType` / `PolicyNotStreamable` (`PreflightError`) | preflight says the policy can't be served | fix project/policy configuration; other reason codes (e.g. `rule_unplannable`, `resolution_error:<cause>`) surface as the base `PreflightError` — treat the code as an open string |
 | `ProviderStreamFactoryRequired` | passed a started stream (or non-async-iterable) instead of a factory | pass a factory returning a fresh async iterable: `(signal) => myStream(signal)` |
 | `ConcurrentSessionUseError` | overlapping `push()` calls on one low-level session | serialize submits per session |
-| `ModerationError` | `moderate.input` job failed/expired or timed out | retry the input check |
+| `ModerationError` | a `moderate.input` / `moderate.output` job failed/expired or timed out | retry the check |
 | `CollieConnectionError` | transport failure (timeout, connection refused) | retry; check connectivity to `baseUrl` |
 | `CollieApiError` | unexpected HTTP error or malformed response (`code === "invalid_response"`) | inspect `statusCode`/`code`; retry or report |
 
@@ -346,88 +371,6 @@ timeouts, `503` — including the typed `chunk_resolution_unavailable` —
 with exponential backoff + jitter — default base 250 ms, max 4 s, 3 attempts per
 chunk, 10 s ceiling (`new CollieClient({ retryMaxPerChunkS: ... })`). A retried
 chunk never produces a duplicate visible delta.
-
-## Failure policy: fail-closed by default
-
-When retries are exhausted the SDK **fails closed** — it throws and releases no
-text. There is no fail-open switch: shipping unchecked model output is a risk
-decision only you can make, so it has to be your explicit code, not a default.
-
-Two things decide what that code should do.
-
-**1. Where you caught it.** `rawStreamFactory` is a deferred factory: the SDK
-calls it exactly once, *after* the input check passes and the session exists. So
-if CollieAi is unreachable, the failure lands before your LLM ever ran — nothing
-was generated, nothing reached the user, and passing through is a clean choice.
-A failure *mid-stream* is different: some text is already on screen and the
-engine is holding more, so re-running the model would duplicate output. Track it
-with one flag.
-
-**2. Not every `CollieError` is an outage.** `ChunkStreamingUnsupported` means
-the policy demands buffered checking, and `ChunkRetryExhausted` means a
-mid-stream abort. Treating the base class as an outage would bypass a policy
-that deliberately asked to inspect the whole answer. Match the transport
-failures — `CollieConnectionError` and `CollieApiError` with a 5xx — and nothing
-else.
-
-```ts
-import {
-  BufferedFallbackRequired, ChunkStreamingUnsupported,
-  CollieApiError, CollieConnectionError, CollieError,
-} from "@collieai/sdk";
-
-let started = false;
-const rawStreamFactory = () => customerLlm(prompt);
-
-try {
-  for await (const ev of collie.streaming.protectStream({ input: prompt, rawStreamFactory })) {
-    if (ev.type === "delta") {
-      started = true;
-      await write(ev.text);
-    } else if (ev.type === "input_blocked") {
-      await write(ev.blockMessage ?? "Request rejected."); return;
-    } else if (ev.type === "blocked") {
-      await write(ev.blockMessage ?? "Response rejected."); return;
-    }
-  }
-} catch (e) {
-  // Fail-open ONLY on infrastructure failure AND only before the first delta.
-  const infra =
-    e instanceof CollieConnectionError ||
-    (e instanceof CollieApiError && (e.statusCode ?? 0) >= 500);
-  if (infra && FAIL_OPEN_ALLOWED && !started) {
-    for await (const delta of customerLlm(prompt)) await write(delta); // unfiltered
-    return;
-  }
-  // Policy demands buffered checking -- an instruction, not an outage. The
-  // !started guard avoids re-emitting an answer the user has already partly seen.
-  // NOTE: protectBuffered re-invokes your LLM — a second, billable generation.
-  if ((e instanceof BufferedFallbackRequired || e instanceof ChunkStreamingUnsupported) && !started) {
-    const r = await collie.streaming.protectBuffered({ input: prompt, rawStreamFactory });
-    await write(r.blocked ? (r.blockMessage ?? "Response rejected.") : (r.filteredText ?? ""));
-    return;
-  }
-  // Everything else, including a mid-stream abort.
-  if (e instanceof CollieError) {
-    await write("Could not verify the response. Please try again.");
-    return;
-  }
-  throw e;
-}
-```
-
-An `AbortError` from your own `AbortSignal` is not a `CollieError`, so a client
-disconnect never triggers fail-open.
-
-If you need fail-open **mid-stream** too, you must tee the provider stream: wrap
-your LLM iterable so deltas also accumulate in a local buffer, then on failure
-emit `buffer.slice(alreadyWrittenChars)` and continue raw. Without the tee the
-text the engine was still holding is lost and the answer has a hole in the
-middle.
-
-Whatever you choose, make fail-open **observable**: log every occurrence and put
-it behind a flag you can turn off. A silent `catch` means an outage can leave you
-serving unchecked model output for hours with everything looking healthy.
 
 ## Advanced: low-level session
 

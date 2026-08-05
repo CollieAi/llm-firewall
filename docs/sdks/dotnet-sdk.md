@@ -115,6 +115,37 @@ Until context analysis is enabled (host flag **and** policy switch), `Context` i
 inert — a safe no-op.
 {% endhint %}
 
+## Check an output produced outside a wrapper
+
+`ProtectStreamAsync` / `ProtectBufferedAsync` already moderate the streamed
+answer. Use `CheckOutputAsync` for assistant text that never went through a
+wrapper — proactive notifications, escalation messages, any side channel. Don't
+route such text through `CheckInputAsync`: that evaluates it with **input**
+rules, so output-safety and masking rules silently never run, and injection
+detectors can false-block assistant-style imperatives ("You need to submit…").
+
+```csharp
+var result = await collie.Moderation.CheckOutputAsync(new OutputModerationRequest
+{
+    Response = assistantText,
+    ConversationId = conversationId, // optional
+    CorrelationId = notificationId,  // optional
+});
+
+if (result.Blocked) return;               // don't send it
+Send(result.FilteredText ?? assistantText); // masking applies here
+```
+
+`FilteredText` carries the **masked** output — send it, not the original, or
+masking rules silently do nothing. `OutputModerationRequest` has no `Context`:
+context is an input surface; for context-aware output filtering use
+`ProtectBufferedAsync` / `ProtectStreamAsync`.
+
+Both moderation requests accept an optional `TimeoutS` — a wall-clock budget
+in seconds for polling the verdict (it starts after the job-create POST,
+which `CollieClientOptions.Timeout` bounds separately). On expiry you get the
+same `ModerationException` as any died-without-verdict outcome.
+
 ## Stream safely (ASP.NET minimal API)
 
 `ProtectStreamAsync` checks the input, calls your LLM **only if it passes**,
@@ -346,7 +377,7 @@ not exceptions.
 | `ProjectNotFoundException` / `StreamingFeatureDisabledException` / `PlanNotEntitledException` / `UnknownRuleTypeException` / `PolicyNotStreamableException` (`PreflightException`) | preflight says the policy can't be served | fix project/policy configuration; other reason codes (e.g. `rule_unplannable`, `resolution_error:<cause>`) surface as the base `PreflightException` — treat the code as an open string |
 | `ProviderStreamFactoryRequiredException` | the factory returned null / an unusable stream | return a fresh `IAsyncEnumerable<string>` from the factory |
 | `ConcurrentSessionUseException` | overlapping `PushAsync` calls on one session | serialize submits per session |
-| `ModerationException` | `CheckInputAsync` job failed/expired or timed out | retry the input check |
+| `ModerationException` | a `CheckInputAsync` / `CheckOutputAsync` job failed/expired or timed out | retry the check |
 | `CollieConnectionException` | transport failure (timeout, connection refused) | retry; check connectivity to `BaseUrl` |
 | `CollieApiException` | unexpected HTTP error or malformed response (`Code == "invalid_response"`) | inspect `StatusCode`/`Code`; retry or report |
 
@@ -358,80 +389,6 @@ timeouts, `503` — including the typed `chunk_resolution_unavailable` —
 with exponential backoff + jitter — default base 250 ms, max 4 s, 3 attempts
 per chunk, 10 s ceiling (configurable on `CollieClientOptions`). A retried
 chunk never produces a duplicate visible delta.
-
-## Failure policy: fail-closed by default
-
-When retries are exhausted the SDK **fails closed** — it raises and releases no
-text. There is no fail-open switch: shipping unchecked model output is a risk
-decision only you can make, so it has to be your explicit code, not a default.
-
-Two things decide what that code should do.
-
-**1. Where you caught it.** `RawStreamFactory` is a deferred factory: the SDK
-calls it exactly once, *after* the input check passes and the session exists. So
-if CollieAi is unreachable, the failure lands before your LLM ever ran — nothing
-was generated, nothing reached the user, and passing through is a clean choice.
-A failure *mid-stream* is different: some text is already on screen and the
-engine is holding more, so re-running the model would duplicate output. Track it
-with one flag.
-
-**2. Not every `CollieException` is an outage.** `ChunkStreamingUnsupportedException`
-means the policy demands buffered checking, and `ChunkRetryExhaustedException`
-means a mid-stream abort. Catching the base type and passing through would
-bypass a policy that deliberately asked to inspect the whole answer. Catch the
-transport failures — `CollieConnectionException` and `CollieApiException` with a
-5xx — and nothing else.
-
-```csharp
-bool started = false;
-try {
-    await foreach (var ev in collie.Streaming.ProtectStreamAsync(req, ct)) {
-        switch (ev) {
-            case SafeDelta d:     started = true; await Write(d.Text); break;
-            case InputBlocked ib: await Write(ib.BlockMessage ?? "Request rejected."); return;
-            case Blocked b:       await Write(b.BlockMessage ?? "Response rejected."); return;
-        }
-    }
-}
-// Fail-open ONLY on infrastructure failure AND only before the first delta.
-catch (CollieConnectionException) when (FailOpenAllowed && !started) {
-    await PassThrough();                        // your own LLM, unfiltered
-}
-catch (CollieApiException e) when (FailOpenAllowed && !started && e.StatusCode >= 500) {
-    await PassThrough();
-}
-// Policy demands buffered checking -- an instruction, not an outage. !started
-// guards against re-emitting an answer the user has already partly seen.
-catch (BufferedFallbackRequiredException)  when (!started) { await BufferedPath(); }
-catch (ChunkStreamingUnsupportedException) when (!started) { await BufferedPath(); }
-// Everything else, including a mid-stream abort.
-catch (CollieException) {
-    await Write("Could not verify the response. Please try again.");
-}
-
-// The full answer is checked before anything reaches the user.
-// NOTE: this re-invokes your LLM — the first stream was already started and
-// partially consumed, so this is a second, billable generation.
-async Task BufferedPath() {
-    var r = await collie.Streaming.ProtectBufferedAsync(new ProtectBufferedRequest {
-        Input = msg,
-        RawStreamFactory = token => CustomerLlm.StreamAsync(msg, token),
-    }, ct);
-    await Write(r.Blocked ? (r.BlockMessage ?? "Response rejected.") : r.FilteredText ?? "");
-}
-```
-
-`OperationCanceledException` does not inherit `CollieException`, so a client
-disconnect never triggers fail-open.
-
-If you need fail-open **mid-stream** too, you must tee the provider stream: wrap
-your LLM enumerable so deltas also accumulate in a local buffer, then on failure
-emit `buffer[alreadyWrittenChars..]` and continue raw. Without the tee the text
-the engine was still holding is lost and the answer has a hole in the middle.
-
-Whatever you choose, make fail-open **observable**: log every occurrence and put
-it behind a flag you can turn off. A silent catch means an outage can leave you
-serving unchecked model output for hours with everything looking healthy.
 
 ## Advanced: low-level session
 
