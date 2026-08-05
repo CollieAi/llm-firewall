@@ -390,6 +390,80 @@ with exponential backoff + jitter — default base 250 ms, max 4 s, 3 attempts
 per chunk, 10 s ceiling (configurable on `CollieClientOptions`). A retried
 chunk never produces a duplicate visible delta.
 
+## Failure policy: fail-closed by default
+
+When retries are exhausted the SDK **fails closed** — it raises and releases no
+text. There is no fail-open switch: shipping unchecked model output is a risk
+decision only you can make, so it has to be your explicit code, not a default.
+
+Two things decide what that code should do.
+
+**1. Where you caught it.** `RawStreamFactory` is a deferred factory: the SDK
+calls it exactly once, *after* the input check passes and the session exists. So
+if CollieAi is unreachable, the failure lands before your LLM ever ran — nothing
+was generated, nothing reached the user, and passing through is a clean choice.
+A failure *mid-stream* is different: some text is already on screen and the
+engine is holding more, so re-running the model would duplicate output. Track it
+with one flag.
+
+**2. Not every `CollieException` is an outage.** `ChunkStreamingUnsupportedException`
+means the policy demands buffered checking, and `ChunkRetryExhaustedException`
+means a mid-stream abort. Catching the base type and passing through would
+bypass a policy that deliberately asked to inspect the whole answer. Catch the
+transport failures — `CollieConnectionException` and `CollieApiException` with a
+5xx — and nothing else.
+
+```csharp
+bool started = false;
+try {
+    await foreach (var ev in collie.Streaming.ProtectStreamAsync(req, ct)) {
+        switch (ev) {
+            case SafeDelta d:     started = true; await Write(d.Text); break;
+            case InputBlocked ib: await Write(ib.BlockMessage ?? "Request rejected."); return;
+            case Blocked b:       await Write(b.BlockMessage ?? "Response rejected."); return;
+        }
+    }
+}
+// Fail-open ONLY on infrastructure failure AND only before the first delta.
+catch (CollieConnectionException) when (FailOpenAllowed && !started) {
+    await PassThrough();                        // your own LLM, unfiltered
+}
+catch (CollieApiException e) when (FailOpenAllowed && !started && e.StatusCode >= 500) {
+    await PassThrough();
+}
+// Policy demands buffered checking -- an instruction, not an outage. !started
+// guards against re-emitting an answer the user has already partly seen.
+catch (BufferedFallbackRequiredException)  when (!started) { await BufferedPath(); }
+catch (ChunkStreamingUnsupportedException) when (!started) { await BufferedPath(); }
+// Everything else, including a mid-stream abort.
+catch (CollieException) {
+    await Write("Could not verify the response. Please try again.");
+}
+
+// The full answer is checked before anything reaches the user.
+// NOTE: this re-invokes your LLM — the first stream was already started and
+// partially consumed, so this is a second, billable generation.
+async Task BufferedPath() {
+    var r = await collie.Streaming.ProtectBufferedAsync(new ProtectBufferedRequest {
+        Input = msg,
+        RawStreamFactory = token => CustomerLlm.StreamAsync(msg, token),
+    }, ct);
+    await Write(r.Blocked ? (r.BlockMessage ?? "Response rejected.") : r.FilteredText ?? "");
+}
+```
+
+`OperationCanceledException` does not inherit `CollieException`, so a client
+disconnect never triggers fail-open.
+
+If you need fail-open **mid-stream** too, you must tee the provider stream: wrap
+your LLM enumerable so deltas also accumulate in a local buffer, then on failure
+emit `buffer[alreadyWrittenChars..]` and continue raw. Without the tee the text
+the engine was still holding is lost and the answer has a hole in the middle.
+
+Whatever you choose, make fail-open **observable**: log every occurrence and put
+it behind a flag you can turn off. A silent catch means an outage can leave you
+serving unchecked model output for hours with everything looking healthy.
+
 ## Advanced: low-level session
 
 If you need to drive batching yourself, use the session directly. It does
