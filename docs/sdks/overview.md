@@ -1,14 +1,14 @@
 ---
 description: >-
   Language-native CollieAi SDKs for Python, Node, and .NET — customer-owned
-  streaming and pre-generation input moderation without touching the raw chunk
+  streaming plus input and output moderation without touching the raw chunk
   protocol.
 icon: code
 ---
 
 # SDKs
 
-The CollieAi SDKs are language-native clients for **customer-owned streaming** and **input moderation**. You run your own model; the SDK checks the prompt before generation and streams back only CollieAi-released text — it owns the chunk protocol (sequence numbers, retries, idempotency, finalization), so you never touch the [raw chunk endpoints](../async-jobs/customer-owned-streaming.md).
+The CollieAi SDKs are language-native clients for **customer-owned streaming** and **input and output moderation**. You run your own model; the SDK checks the prompt before generation and streams back only CollieAi-released text — it owns the chunk protocol (sequence numbers, retries, idempotency, finalization), so you never touch the [raw chunk endpoints](../async-jobs/customer-owned-streaming.md).
 
 All three SDKs share the same API shape and are validated by a cross-language conformance suite, so behavior is consistent across languages.
 

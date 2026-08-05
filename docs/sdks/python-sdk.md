@@ -87,6 +87,36 @@ Until context analysis is enabled (the deployment's host flag **and** the policy
 switch), `context` is inert — a safe no-op (`status` `disabled` / `not_provided`).
 {% endhint %}
 
+## Check an output produced outside a wrapper
+
+`protect_stream` / `protect_buffered` already moderate the streamed answer. Use
+`moderate.output` for assistant text that never went through a wrapper —
+proactive notifications, escalation messages, any side channel. Don't route
+such text through `moderate.input`: that evaluates it with **input** rules, so
+output-safety and masking rules silently never run, and injection detectors can
+false-block assistant-style imperatives ("You need to submit…").
+
+```python
+result = await collie.moderate.output(
+    response=assistant_text,
+    conversation_id=conversation_id,   # optional
+    correlation_id=notification_id,    # optional
+)
+
+if result.blocked:
+    return  # don't send it
+# `is not None`, NOT `or`: an empty filtered_text is a real mask result
+# (a rule may replace the whole match with "") — `or` would send the
+# original, unmasked text.
+safe = result.filtered_text if result.filtered_text is not None else assistant_text
+send(safe)
+```
+
+`filtered_text` carries the **masked** output — send it, not the original, or
+masking rules silently do nothing. `moderate.output` takes no `context`:
+context is an input surface; for context-aware output filtering use
+`protect_buffered` / `protect_stream`.
+
 ## Stream safely (FastAPI)
 
 `protect_stream` checks the input, calls your LLM **only if it passes**, batches
@@ -350,7 +380,7 @@ Catch typed exceptions instead of parsing strings. All inherit from
 | `ProjectNotFound` / `StreamingFeatureDisabled` / `PlanNotEntitled` / `UnknownRuleType` / `PolicyNotStreamable` *(`PreflightError`)* | preflight says the policy can't be served | fix project/policy configuration; other reason codes (e.g. `rule_unplannable`, `resolution_error:<cause>`) surface as the base `PreflightError` — treat the code as an open string |
 | `ProviderStreamFactoryRequired` | passed a started stream (or non-async-iterable) instead of a factory | pass a zero-arg callable: `lambda: my_stream()` |
 | `ConcurrentSessionUseError` | overlapping `push()` calls on one low-level session | serialize submits per session |
-| `ModerationError` | `moderate.input` job failed/expired or timed out | retry the input check |
+| `ModerationError` | a `moderate.input` / `moderate.output` job failed/expired or timed out | retry the check |
 | `CollieConnectionError` | transport failure (timeout, connection refused) | retry; check connectivity to `base_url` |
 | `CollieAPIError` | unexpected HTTP error or malformed response (`code="invalid_response"`) | inspect `status_code`/`code`; retry or report |
 
@@ -362,95 +392,6 @@ timeouts, `503` — including the typed `chunk_resolution_unavailable` —
 with exponential backoff + jitter — default base 250 ms, max 4 s, 3 attempts per
 chunk, 10 s ceiling (`AsyncCollie(retry_max_per_chunk_s=...)`). A retried chunk
 never produces a duplicate visible delta.
-
-## Failure policy: fail-closed by default
-
-When retries are exhausted the SDK **fails closed** — it raises and releases no
-text. There is no fail-open switch: shipping unchecked model output is a risk
-decision only you can make, so it has to be your explicit code, not a default.
-
-Two things decide what that code should do.
-
-**1. Where you caught it.** `raw_stream_factory` is a deferred factory: the SDK
-calls it exactly once, *after* the input check passes and the session exists. So
-if CollieAi is unreachable, the failure lands before your LLM ever ran — nothing
-was generated, nothing reached the user, and passing through is a clean choice.
-A failure *mid-stream* is different: some text is already on screen and the
-engine is holding more, so re-running the model would duplicate output. Track it
-with one flag.
-
-**2. Not every `CollieError` is an outage.** `ChunkStreamingUnsupported` means
-the policy demands buffered checking, and `ChunkRetryExhausted` means a
-mid-stream abort. Catching the base class and passing through would bypass a
-policy that deliberately asked to inspect the whole answer. Catch the transport
-failures — `CollieConnectionError` and `CollieAPIError` with a 5xx — and nothing
-else.
-
-```python
-from collieai.errors import (
-    BufferedFallbackRequired, ChunkStreamingUnsupported,
-    CollieAPIError, CollieConnectionError, CollieError,
-)
-
-started = False
-
-def factory():
-    return customer_llm(prompt)          # zero-arg: returns an async iterable
-
-try:
-    async for ev in collie.streaming.protect_stream(
-        input=prompt, raw_stream_factory=factory
-    ):
-        if ev.type == "delta":
-            started = True
-            await write(ev.text)
-        elif ev.type == "input_blocked":
-            await write(ev.block_message or "Request rejected."); return
-        elif ev.type == "blocked":
-            await write(ev.block_message or "Response rejected."); return
-
-# Fail-open ONLY on infrastructure failure AND only before the first delta.
-except CollieConnectionError:
-    if not (FAIL_OPEN_ALLOWED and not started):
-        raise
-    async for delta in customer_llm(prompt):     # your own LLM, unfiltered
-        await write(delta)
-except CollieAPIError as e:
-    if not (FAIL_OPEN_ALLOWED and not started
-            and e.status_code is not None and e.status_code >= 500):
-        raise
-    async for delta in customer_llm(prompt):
-        await write(delta)
-
-# Policy demands buffered checking -- an instruction, not an outage. The
-# `started` guard avoids re-emitting an answer the user has already partly seen.
-# NOTE: protect_buffered re-invokes your LLM — a second, billable generation.
-except (BufferedFallbackRequired, ChunkStreamingUnsupported):
-    if started:
-        await write("Could not verify the response. Please try again.")
-    else:
-        r = await collie.streaming.protect_buffered(
-            input=prompt, raw_stream_factory=factory
-        )
-        await write((r.block_message or "Response rejected.") if r.blocked
-                    else (r.filtered_text or ""))
-
-# Everything else, including a mid-stream abort.
-except CollieError:
-    await write("Could not verify the response. Please try again.")
-```
-
-`asyncio.CancelledError` does not inherit `CollieError`, so a client disconnect
-never triggers fail-open.
-
-If you need fail-open **mid-stream** too, you must tee the provider stream: wrap
-your LLM iterable so deltas also accumulate in a local buffer, then on failure
-emit `buffer[already_written_chars:]` and continue raw. Without the tee the text
-the engine was still holding is lost and the answer has a hole in the middle.
-
-Whatever you choose, make fail-open **observable**: log every occurrence and put
-it behind a flag you can turn off. A silent `except` means an outage can leave
-you serving unchecked model output for hours with everything looking healthy.
 
 ## Advanced: low-level session
 
