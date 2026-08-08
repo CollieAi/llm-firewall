@@ -76,10 +76,23 @@ var input = await collie.Moderation.CheckInputAsync(new InputModerationRequest
 
 if (input.Blocked)
     return input.BlockMessage ?? "Input blocked by policy.";
+
+// If your input policy MASKS, send the FILTERED prompt to your model —
+// null-check, never string emptiness: "" is a legitimate full wipe.
+var promptForModel = input.FilteredText ?? userPrompt;
 ```
 
 A policy block is a normal result (`Blocked = true`), not an exception.
-No webhook is required — the SDK polls for you.
+No webhook is required — the SDK polls for you. `FilteredText` is the
+post-mask prompt: the raw values a mask rule removed must never reach your
+model, so `promptForModel` — not `userPrompt` — goes into your LLM call.
+When the wrapper's own gate masks a prompt, `ProtectStreamAsync` /
+`ProtectBufferedAsync` throw `MaskedInputException` before your factory
+runs; the recipe is to gate manually as above, build the factory over
+`result.FilteredText`, and pass `InputResult = result` (keep
+`CheckInput` at its default `true` — combining `InputResult` with
+`CheckInput = false` is a contradiction and throws
+`ArgumentException`; in 2.0 it was silently ignored).
 
 ## Analyze context alongside the prompt
 
@@ -298,6 +311,19 @@ var result = await collie.Streaming.ProtectBufferedAsync(new ProtectBufferedRequ
 return result.Blocked ? result.BlockMessage : result.FilteredText;
 ```
 
+One difference from `ProtectStreamAsync` matters if you reuse an input
+result: on the streaming path a passed `InputResult` carrying a `JobId`
+becomes, against a 2.1+ server, a **server-verified, expiring, single-use
+claim** (the `input_gate_*` 409s can surface; without a `JobId` or on an
+older server the session runs claimless and re-filters the input in its
+own async pass — the pre-2.1 shape: billed, and the verdict can land
+after streaming has started); on the
+buffered path it is a **trusted-client reuse** — the server
+neither verifies nor consumes it, and no `input_gate_*` error can occur.
+Because nothing server-side checks freshness there, obtain the result in the
+same turn, from the same client and project, immediately before the call —
+never cache or reuse it.
+
 ## Relay safe output to a browser (SSE)
 
 A session can **subscribe** to its job's CollieAi SSE stream and relay safe
@@ -378,6 +404,7 @@ not exceptions.
 | `ProviderStreamFactoryRequiredException` | the factory returned null / an unusable stream | return a fresh `IAsyncEnumerable<string>` from the factory |
 | `ConcurrentSessionUseException` | overlapping `PushAsync` calls on one session | serialize submits per session |
 | `ModerationException` | a `CheckInputAsync` / `CheckOutputAsync` job failed/expired or timed out | retry the check |
+| `MaskedInputException` | the wrapper's own input gate MASKED the prompt — streaming would send the unmasked original to your model | gate manually with `CheckInputAsync`, build the factory over `result.FilteredText` (`""` is a legitimate full wipe), pass `InputResult = result` |
 | `CollieConnectionException` | transport failure (timeout, connection refused) | retry; check connectivity to `BaseUrl` |
 | `CollieApiException` | unexpected HTTP error or malformed response (`Code == "invalid_response"`) | inspect `StatusCode`/`Code`; retry or report |
 
@@ -474,10 +501,17 @@ var check = await collie.Moderation.CheckInputAsync(new InputModerationRequest {
 if (check.Blocked)
     return check.BlockMessage ?? "Input blocked by policy.";
 
-await using var session = await collie.Streaming.CreateSessionAsync(
-    new StreamingSessionRequest { Input = userPrompt });
+// The split that matters when your input policy masks:
+// - the SESSION gets the ORIGINAL prompt (it must byte-match the gate);
+// - your MODEL gets the FILTERED prompt ("" is a legitimate full wipe).
+var promptForModel = check.FilteredText ?? userPrompt;
 
-await foreach (var rawDelta in YourLlmStream(userPrompt))
+// InputJobId: proves the prompt was just gated, so the server skips
+// re-filtering it on the session job (one input pass per turn).
+await using var session = await collie.Streaming.CreateSessionAsync(
+    new StreamingSessionRequest { Input = userPrompt, InputJobId = check.JobId });
+
+await foreach (var rawDelta in YourLlmStream(promptForModel))
 {
     var result = await session.PushAsync(rawDelta);
     foreach (var emit in result.Emits)
@@ -486,3 +520,10 @@ await foreach (var rawDelta in YourLlmStream(userPrompt))
 }
 await session.FinishAsync();
 ```
+
+Manual sessions do not auto-retry the claim protocol: `input_gate_stale`
+means the policy changed since your gate ran — re-run `CheckInputAsync`
+(with the same context, if any) and open a new session with the fresh job
+id; `input_gate_unverifiable` means retry without the gate reference;
+`input_gate_claimed` means that gate was already consumed.
+`ProtectStreamAsync` handles all of this for you — but ONLY when it runs its own gate: with an external `InputResult` (this very recipe) the typed errors surface to YOUR code by design, since the wrapper cannot re-check a context it never saw.
