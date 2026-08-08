@@ -31,6 +31,21 @@ Create a new async job.
 | `metadata`           | object  | No       | Arbitrary key-value pairs attached to the job                                                 |
 | `expires_in_seconds` | integer | No       | Job TTL in seconds (60–604800). Default: 3600 (1h)                                            |
 | `inbound_only`       | boolean | No       | Only run input rules; complete without awaiting an LLM response. Default: `false`             |
+| `input_job_id`       | string  | No       | Single-use claim: the id of a completed **input-only** job that already evaluated exactly this `message_input`. The server verifies the reference and skips re-filtering the input on this job (one input pass per streaming turn). Requires `message_input`; cannot be combined with `message_output` or `inbound_only`. Used automatically by the SDK streaming wrappers. |
+
+### Input-gate claims (`input_job_id`)
+
+A create carrying `input_job_id` is verified against the referenced job:
+same project, byte-identical input text, the referenced job completed,
+not blocked, itself never pre-gated. Outcomes:
+
+| Outcome | Meaning |
+| --- | --- |
+| `202` | Claim honored — the job starts at `awaiting_response` with no input pass of its own. An identical resend of a create that already succeeded also returns `202` with the **existing** job (lost-ACK recovery). |
+| `400` `invalid_input_gate` | The reference is wrong: unknown id, different project or text, a blocked or non-input-only job, or a job that was itself pre-gated. |
+| `409` `input_gate_stale` | The policy changed since the referenced job ran, or it expired. Run the input check again and retry with the fresh id. |
+| `409` `input_gate_unverifiable` | The reference cannot be verified right now. Retry the create **without** `input_job_id` — re-running the input check will not help. |
+| `409` `input_gate_claimed` | The referenced job was already claimed by another create. Each input-only job can gate at most one session, ever. |
 
 ### Field Behavior
 
@@ -300,6 +315,7 @@ All errors use the OpenAI-compatible `{"error": {"message", "type", "code"}}` en
 | `409`  | `chunk_concurrent_submit`     | Another submit for the same job is in-flight. Submissions for one job must be serial; wait for the prior response.                                                               |
 | `409`  | `chunk_policy_changed`        | The project's policy changed mid-stream. Create a new job to use the updated policy.                                                                                             |
 | `409`  | `chunk_session_unrecoverable` | A prior commit left the job's stream in a state that can't be repaired. Create a new job.                                                                                        |
+| `410`  | -                             | The job is past its `expires_at`. A non-terminal job is flipped to `expired`; a job that already reached a terminal status keeps it. Create a new job.                            |
 | `503`  | `chunk_resolution_unavailable` | The server could not **resolve** the project's policy — a dependency was unreachable, not a policy problem. Retry the same sequence with backoff; retries are safe via idempotency. |
 | `504`  | `chunk_filter_timeout`        | Filtering exceeded the per-chunk budget. Retry the same sequence with backoff.                                                                                                   |
 
