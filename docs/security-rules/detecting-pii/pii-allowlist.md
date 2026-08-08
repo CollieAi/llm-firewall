@@ -183,8 +183,13 @@ set its Direction to **All**.
 
 > **Important — auto-allowlist does not bypass input masking.** CollieAi still
 > masks the value in the **input** before the model sees it (PII protection is
-> intentional and is not turned off). The model therefore never receives the raw
-> value and **cannot echo it back** — a "repeat the IBAN I just sent" prompt
+> intentional and is not turned off). On the API/SDK path this holds because
+> your model call must use the **filtered** input: `moderate.input` returns
+> `filtered_text` (send it, not the original — it can legitimately be an empty
+> string on a full wipe), and since SDK 2.1 the `protect_stream` /
+> `protect_buffered` wrappers **fail closed** with `MaskedInputError` rather
+> than let a factory stream the unmasked original. The model therefore never
+> receives the raw value and **cannot echo it back** — a "repeat the IBAN I just sent" prompt
 > returns the masked form, not the original. Auto-allowlist releases the value
 > only when it reaches the **output from another source**: typically your
 > assistant looking the user's own IBAN up from your backend or a tool and
