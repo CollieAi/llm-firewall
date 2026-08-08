@@ -49,10 +49,25 @@ result = await collie.moderate.input(
 
 if result.blocked:
     return result.block_message or "Input blocked by policy."
+
+# If your input policy MASKS, send the FILTERED prompt to your model —
+# `is not None`, never truthiness: "" is a legitimate full wipe.
+prompt_for_model = (
+    result.filtered_text if result.filtered_text is not None else user_prompt
+)
 ```
 
 A policy block is a normal result (`result.blocked is True`), not an exception.
-No webhook is required — the SDK polls for you.
+No webhook is required — the SDK polls for you. `filtered_text` is the
+post-mask prompt: the raw values a mask rule removed must never reach your
+model, so `prompt_for_model` — not `user_prompt` — goes into your LLM call.
+When the wrapper's own gate masks a prompt, `protect_stream` /
+`protect_buffered` raise `MaskedInputError` before your factory runs; the
+recipe is to gate manually as above, build the factory over
+`result.filtered_text`, and pass `input_result=result` (keep
+`check_input` at its default `True` — combining `input_result` with
+`check_input=False` is a contradiction and raises `ValueError`; in
+2.0 it was silently ignored).
 
 ## Analyze context alongside the prompt
 
@@ -285,6 +300,19 @@ result = await collie.streaming.protect_buffered(
 return result.block_message if result.blocked else result.filtered_text
 ```
 
+One difference from `protect_stream` matters if you reuse an input result:
+on the streaming path a passed `input_result` carrying a `job_id` becomes,
+against a 2.1+ server, a **server-verified, expiring, single-use claim**
+(the `input_gate_*` 409s can surface; without a `job_id` or on an older
+server the session runs claimless and re-filters the input in its own
+async pass — the pre-2.1 shape: billed, and the verdict can land after
+streaming has started); on the
+buffered path it is a **trusted-client reuse** — the server neither verifies
+nor consumes it, and no `input_gate_*` error can occur. Because nothing
+server-side checks freshness there, obtain the result in the same turn, from
+the same client and project, immediately before the call — never cache or
+reuse it.
+
 ## Relay safe output to a browser (SSE)
 
 When your backend submits chunks for a job, it can also **subscribe** to that
@@ -381,6 +409,7 @@ Catch typed exceptions instead of parsing strings. All inherit from
 | `ProviderStreamFactoryRequired` | passed a started stream (or non-async-iterable) instead of a factory | pass a zero-arg callable: `lambda: my_stream()` |
 | `ConcurrentSessionUseError` | overlapping `push()` calls on one low-level session | serialize submits per session |
 | `ModerationError` | a `moderate.input` / `moderate.output` job failed/expired or timed out | retry the check |
+| `MaskedInputError` | the wrapper's own input gate MASKED the prompt — streaming would send the unmasked original to your model | gate manually with `moderate.input`, build the factory over `result.filtered_text` (`""` is a legitimate full wipe), pass `input_result=result` |
 | `CollieConnectionError` | transport failure (timeout, connection refused) | retry; check connectivity to `base_url` |
 | `CollieAPIError` | unexpected HTTP error or malformed response (`code="invalid_response"`) | inspect `status_code`/`code`; retry or report |
 
@@ -492,8 +521,20 @@ check = await collie.moderate.input(prompt=user_prompt)
 if check.blocked:
     return check.block_message or "Input blocked by policy."
 
-async with collie.streaming.session(input=user_prompt) as session:
-    async for raw_delta in your_llm_stream():
+# The split that matters when your input policy masks:
+# - the SESSION gets the ORIGINAL prompt (it must byte-match the gate);
+# - your MODEL gets the FILTERED prompt (`is not None`, never truthiness —
+#   "" is a legitimate full wipe).
+prompt_for_model = (
+    check.filtered_text if check.filtered_text is not None else user_prompt
+)
+
+# input_job_id: proves the prompt was just gated, so the server skips
+# re-filtering it on the session job (one input pass per turn).
+async with collie.streaming.session(
+    input=user_prompt, input_job_id=check.job_id
+) as session:
+    async for raw_delta in your_llm_stream(prompt_for_model):
         result = await session.push(raw_delta)
         for emit in result.emits:
             yield emit.text          # forward ONLY safe emits
@@ -501,3 +542,10 @@ async with collie.streaming.session(input=user_prompt) as session:
             break
     await session.finish()
 ```
+
+Manual sessions do not auto-retry the claim protocol: `input_gate_stale`
+means the policy changed since your gate ran — re-run `moderate.input`
+(with the same context, if any) and open a new session with the fresh job
+id; `input_gate_unverifiable` means retry without the gate reference;
+`input_gate_claimed` means that gate was already consumed.
+`protect_stream` handles all of this for you — but ONLY when it runs its own gate: with an external `input_result` (this very recipe) the typed errors surface to YOUR code by design, since the wrapper cannot re-check a context it never saw.
