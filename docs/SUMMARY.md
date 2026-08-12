@@ -67,6 +67,7 @@
 
 * [Monitoring overview](monitoring/overview.md)
 * [Logs](monitoring/logs.md)
+* [Exporting logs](monitoring/exporting-logs.md)
 * [Analytics](monitoring/analytics.md)
 * [Alerts](monitoring/alerts.md)
 
