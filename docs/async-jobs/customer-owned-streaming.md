@@ -161,7 +161,7 @@ A session is terminal when:
 * You submit a chunk with `is_final=true` and the response comes back with `finished=true`.
 * A rule fires a block on any chunk. The response has an emit with `blocked=true` and `finished=true`.
 
-Once terminal, subsequent submits return `409 chunk_session_finished` — create a new job to start a new stream. The terminal state is also published as the SSE `end` event with `reason: final` (`is_final` flush), `reason: blocked` (rule block), or `reason: session_unrecoverable` (a rare commit failure that can't be repaired by retry).
+Once terminal, subsequent submits return `409 chunk_session_finished` — create a new job to start a new stream. The terminal state is also published as the SSE `end` event with `reason: final` (`is_final` flush), `reason: blocked` (rule block), or `reason: session_unrecoverable` (rare: the session entered a state no retry can repair — a stream gap from a prior commit failure, lost or foreign emit history, lost session state, or corrupt/unreadable session state).
 
 ## Error handling
 
@@ -174,9 +174,10 @@ The error envelope is the same OpenAI-compatible shape used elsewhere: `{"error"
 | `chunk_concurrent_submit`      | Another submit is in flight. Serialize submissions per job\_id.                                                                                                                                  |
 | `chunk_session_finished`       | The session is over (final or block). Stop submitting; this job is done.                                                                                                                         |
 | `chunk_streaming_unsupported`  | The project's policy can't stream (e.g. has an LLM-detection rule). Use the [synchronous `/response` endpoint](../api-reference/jobs.md#post-v1jobsjob_idresponse) instead, or split the policy. |
-| `chunk_session_unrecoverable`  | A prior commit failure left the stream in an unrepairable state (very rare). Create a new job.                                                                                                   |
+| `chunk_session_unrecoverable`  | The session entered a state no retry can repair — a stream gap from a prior commit failure, lost or foreign emit history, lost session state, or corrupt/unreadable session state (very rare). Create a new job.                                   |
 | `chunk_idempotency_conflict`   | You re-submitted a sequence with a different body. Use a new sequence number for new content.                                                                                                    |
 | `chunk_policy_changed`         | The project's policy changed mid-stream. Create a new job — it picks up the updated policy.                                                                                                      |
+| `chunk_persistence_unavailable` (`503`) | A storage step ended in an uncertain state. Retry the SAME sequence with backoff — always safe; the SDKs do this automatically. Depending on the branch (the error `message` says which), the retry re-processes/replays the chunk, records or lands on the session's terminal state (possibly a `409 chunk_session_unrecoverable`), or repairs the job's status record. |
 | `chunk_resolution_unavailable` (`503`) | The server couldn't **resolve** the policy (a dependency outage, not a policy problem). Retry the SAME sequence with backoff; the SDKs do this automatically.                             |
 
 ## SSE consumer semantics
