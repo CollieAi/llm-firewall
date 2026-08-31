@@ -224,7 +224,7 @@ curl -X POST "https://app.collieai.io/v1/chat/completions" \
 
 ## Function Calling (Tools)
 
-CollieAI passes tool definitions and tool call responses through transparently. Security rules are applied to message content; tool schemas are forwarded as-is.
+CollieAI forwards tool definitions (schemas) as-is. Tool-call **content** is part of filtering: on projects with Output rules, model-generated `tool_calls[].function.arguments` are evaluated by your Output rules (non-streaming requests, on deployments with tool-call filtering enabled), and `tool`-role results plus historical `tool_calls` in the request are evaluated by your Input rules. Combinations filtering cannot cover — streaming tool-call requests, mask-type Output rules, or deployments without the feature — are refused with `422 tool_calls_unsupported_with_outbound_filtering` rather than silently bypassing your rules. Projects without Output rules use tools exactly as before. See [Chat Completions API](../api-reference/chat-completions.md#tool-calls-and-filtering).
 
 {% stepper %}
 {% step %}
@@ -339,7 +339,7 @@ client = OpenAI(
 {% endcolumn %}
 {% endcolumns %}
 
-Everything else stays the same. Your `chat.completions.create()` calls, streaming logic, error handling, and tool definitions all work without modification.
+Everything else stays the same. Your `chat.completions.create()` calls, streaming logic and error handling work without modification; tool calling works as described in [Function Calling (Tools)](#function-calling-tools) — on projects with Output rules its availability depends on the deployment's tool-call filtering support.
 
 ### Environment Variables
 
