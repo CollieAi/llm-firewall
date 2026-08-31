@@ -128,8 +128,11 @@ results re-enter the conversation as `tool`-role messages — both are
 content, and both are covered by filtering where the deployment
 supports it:
 
-- **Projects without Output rules** use tools freely; tool schemas are
-  forwarded as-is.
+- **Projects without Output rules** never see the tool-call refusal
+  (the `422` guard exists for the Output-rule interaction); tool
+  schemas are forwarded as-is. Input-rule filtering of tool content
+  (below) still applies on deployments with the feature — Output
+  rules govern the guard, not whether Input rules run.
 - **Projects with Output rules**: on deployments with tool-call
   filtering enabled, non-streaming requests run
   `tool_calls[].function.arguments` through your Output rules (every
@@ -148,21 +151,25 @@ supports it:
   message text; a mask decision that matches inside historical
   tool-call *arguments* cannot be honored (arguments are never
   rewritten) and the request is refused with `422
-  tool_call_arguments_mask_unsupported`. Requests carrying more
-  tool-call content items than the deployment's per-request budget are
-  refused with `422 tool_call_items_limit_exceeded` rather than
-  partially covered.
+  tool_call_arguments_mask_unsupported`. One evaluation budget spans the whole
+  exchange: tool-call items in the request (historical arguments and
+  tool results) and the model-generated tool-call arguments in the
+  response draw from the same per-completion limit — so the
+  `422 tool_call_items_limit_exceeded` refusal can occur either before
+  the model call (too many items in the request) or after it (the
+  model's response exhausted what the request left). Over-budget
+  exchanges are refused rather than partially covered.
 
 ### Error Responses
 
 | Status | Type                   | Code               | Description                              |
 | ------ | ---------------------- | ------------------ | ---------------------------------------- |
-| `400`  | `policy_violation`     | `content_blocked`  | Input message blocked by a policy rule   |
+| `400`  | `policy_violation`     | `content_blocked`  | Input content blocked by a policy rule (message text, or — on deployments with tool-call filtering — tool results / historical tool-call arguments) |
 | `400`  | `policy_violation`     | `response_blocked` | Output response blocked by a policy rule (message content or tool-call arguments) |
 | `401`  | `authentication_error` | `401`              | Missing, invalid, or expired API key     |
 | `422`  | `tool_calls_unsupported_with_outbound_filtering` | same | The request enables tool calls (`tools` with non-`none` `tool_choice`) on a project with Output rules, and tool-call filtering does not cover this combination — see [Tool Calls and Filtering](#tool-calls-and-filtering) |
 | `422`  | `tool_call_arguments_mask_unsupported` | same | A mask-decision Input rule matched inside the tool-call arguments carried by the request history; arguments are never rewritten, so the request is refused |
-| `422`  | `tool_call_items_limit_exceeded` | same | The request carries more tool-call content items (calls + results) than the deployment's per-request evaluation budget |
+| `422`  | `tool_call_items_limit_exceeded` | same | The exchange exceeds the deployment's per-completion tool-call evaluation budget — request items (historical arguments + tool results) and model-generated response arguments share one limit, so the refusal can occur after the model call |
 | `429`  | `rate_limit_exceeded`  | --                 | Per-project rate limit exceeded          |
 | `429`  | `billing_limit`        | --                 | Monthly plan quota exceeded              |
 
