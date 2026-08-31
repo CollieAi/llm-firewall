@@ -10,7 +10,7 @@ icon: square-binary
 
 ## What is base64 payload detection?
 
-The Base64 Payload Detection rule type identifies and handles base64-encoded payloads embedded in prompts, tool-call arguments, or LLM responses. It supports both data URIs (`data:mime/type;base64,...`) and raw base64 strings.
+The Base64 Payload Detection rule type identifies and handles base64-encoded payloads embedded in prompts or LLM responses — and, on deployments with tool-call filtering enabled, in tool-call arguments and results (see [Tool Calls and Filtering](../../api-reference/chat-completions.md#tool-calls-and-filtering)). It supports both data URIs (`data:mime/type;base64,...`) and raw base64 strings.
 
 **Ideal for:**
 
