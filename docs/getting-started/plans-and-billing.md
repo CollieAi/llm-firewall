@@ -69,7 +69,9 @@ You can check your current usage at any time:
 
 * **Dashboard:** Open **Pricing** in the sidebar to see the usage progress bar.
 * **API:** `GET /api/v1/billing/subscription` returns usage details.
-* **Response headers:** Every proxy and job response includes usage headers:
+* **Response headers:** Proxy and job responses that reach quota
+  admission include usage headers (requests rejected before the quota
+  check — authentication or validation errors — carry none):
 
 | Header                     | Description                                                                  |
 | -------------------------- | ---------------------------------------------------------------------------- |
@@ -77,6 +79,17 @@ You can check your current usage at any time:
 | `X-Collie-Usage-Remaining` | Remaining calls this period                                                  |
 | `X-Collie-Usage-Reset`     | ISO 8601 timestamp when the counter resets                                   |
 | `X-Collie-Usage-Warning`   | Present when usage exceeds 80% (`warning_80`, `warning_90`, or `hard_limit`) |
+
+**Exception — degraded quota reads.** In the rare case the usage
+counters are temporarily unreadable, the three `Limit`/`Remaining`/
+`Reset` headers are **omitted together** rather than filled with
+placeholder values, and the response carries
+`X-Collie-Usage-Degraded: quota-unavailable` instead. A `503` quota
+refusal carries only `Retry-After`, no usage headers. Treat the
+triplet as atomic: parse it only when all three are present, and do
+not derive your remaining quota from a response that carries the
+degraded marker — the request itself is still counted normally; only
+the headers' view of the counter is unavailable.
 
 ### Grace buffer
 
