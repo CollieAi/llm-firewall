@@ -164,6 +164,8 @@ If a rule fires on the stable window:
 
 When your project's mode is `buffered`, OR when a rule in the policy can't be evaluated on a streaming window (e.g. LLM-detection rules need the full text), CollieAi accumulates the upstream response, applies rules to the complete text, then replays the result:
 
+Two rule types force this for a reason worth knowing: **LLM detection** needs the full text to judge it, and **[URL reputation](../security-rules/blocking-threats/url-reputation.md)** cannot check a URL before it is complete — and cannot un-send one the client already has. Note that for URL reputation, Monitor mode suppresses the block but NOT the buffering: a policy containing such a rule is delivered buffered either way. Put the rule on input only if time-to-first-token matters more to you than checking model output.
+
 ```mermaid
 flowchart TD
     A["Client request"] --> B["Input filtering (before the stream starts)"]

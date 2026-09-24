@@ -95,6 +95,35 @@ Click any entry to open a detail view containing:
 {% endstep %}
 {% endstepper %}
 
+## URL reputation outcomes
+
+When a policy has a [URL reputation](../security-rules/blocking-threats/url-reputation.md)
+rule, every evaluation on the proxy, native and job paths is recorded —
+including the ones that found nothing — so a log reader can always tell "the
+check found nothing" from "the check did not happen". (On the customer-owned
+chunk path the finalize observation is best-effort; that page says why.) Open a request to see, per rule: the feed it used, the verdict,
+how much of the message was examined, the feed's generation and age, and — on
+a hit — the feed's own evidence (its IOC id, the IOC type, the confidence and
+the malware label).
+
+The **URL reputation** facet on the Logs page filters by those outcomes, and
+can exclude them as well as include them:
+
+| Facet value              | Shows requests where                                            |
+| ------------------------ | ---------------------------------------------------------------- |
+| IOC found                | a URL matched the feed                                           |
+| No match                 | the check ran and found nothing                                  |
+| Nothing to check         | the message had no supported URL                                 |
+| Check unavailable        | the check could not run                                          |
+| Blocked on failure       | a fail-closed rule blocked because the check could not run       |
+| Reused verdict (cache)   | the answer came from a recent identical request                  |
+| Observations truncated   | the request produced more evaluations than one row stores        |
+
+Two boundaries hold in that evidence: the URL from your own traffic is never
+copied into it, and the feed's free text (a malware label, a provider
+reference) is shown as text, never as a link. A numeric IOC id whose shape has
+been verified does link to that feed's own entry on abuse.ch.
+
 ## Session grouping (conversations)
 
 If your client sends a `conversation_id` when it creates a job — the SDK's `conversation_id` argument, or the `conversation_id` field on `POST /v1/jobs` — CollieAi stores it on every log entry for that request, so you can view a whole conversation as a single thread:

@@ -33,6 +33,7 @@ The project-independent endpoints under `/api/v1/policies/{policy_id}/rules` are
 | `regex`              | Match content against regular expression patterns       |
 | `aho_corasick`       | Dictionary Match — multi-pattern string matching        |
 | `url_filter`         | Detect and filter URLs                                  |
+| `url_reputation`     | Block URLs listed in a threat-intelligence feed         |
 | `structured_id`      | Detect structured identifiers (SSN, credit cards, etc.) |
 | `base64_payload`     | Detect base64-encoded payloads                          |
 | `normalization`      | Text normalization before evaluation                    |
