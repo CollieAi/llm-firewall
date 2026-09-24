@@ -56,6 +56,7 @@
   * [Prompt injection](security-rules/blocking-threats/prompt-injection.md)
   * [LLM detection](security-rules/blocking-threats/llm-detection.md)
   * [URL filtering](security-rules/blocking-threats/url-filtering.md)
+  * [URL reputation](security-rules/blocking-threats/url-reputation.md)
   * [Base64 Payloads](security-rules/blocking-threats/base64-payloads.md)
   * [Streaming guard](security-rules/blocking-threats/streaming-guard.md)
 * [Text Processing](security-rules/text-processing/README.md)

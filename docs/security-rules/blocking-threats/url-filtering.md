@@ -246,6 +246,23 @@ When `block_encoded_patterns` is enabled, the rule detects:
 {% endstep %}
 {% endstepper %}
 
+## URL filtering and URL reputation
+
+URL filtering judges the SHAPE of a URL against rules you write: this domain,
+that scheme, this port, that encoding. It knows exactly what you told it, and
+nothing else — a malicious domain registered this morning is invisible to it
+until someone adds it.
+
+[URL reputation](url-reputation.md) judges the IDENTITY of a URL against a
+threat-intelligence feed that CollieAi re-imports for you. It knows what
+abuse.ch has published and nothing about your policy — it cannot allow, cannot
+mask, and says nothing at all about an address the feed has never seen.
+
+They are complementary, and both can be enabled on the same policy: use URL
+filtering for your structural policy and URL reputation for the links neither
+of you has seen before. When both would flag one message, rule order decides
+which is reported.
+
 ## Processing Flow
 
 ```

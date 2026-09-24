@@ -163,6 +163,35 @@ A session is terminal when:
 
 Once terminal, subsequent submits return `409 chunk_session_finished` — create a new job to start a new stream. The terminal state is also published as the SSE `end` event with `reason: final` (`is_final` flush), `reason: blocked` (rule block), or `reason: session_unrecoverable` (rare: the session entered a state no retry can repair — a stream gap from a prior commit failure, lost or foreign emit history, lost session state, or corrupt/unreadable session state).
 
+## URL reputation on a customer-owned stream
+
+A [URL reputation](../security-rules/blocking-threats/url-reputation.md) rule
+cannot judge a partial URL, and on this path CollieAi does not hold your
+chunks — you have already released them to your own client. So the check runs
+at **finalize**, over the completed response, and its result is recorded
+rather than applied to bytes that are already gone. Plan for it the way you
+plan for any monitor-mode finding: the log may tell you that a released
+response contained a known-malicious link, and what you do about it is your
+application's decision.
+
+Two properties of that are worth knowing precisely, because they are narrower
+than "the check always runs and is always recorded":
+
+* **A failure before the terminal commit leaves nothing stored** — no response
+  and no record of which feed generation was consulted. Your retry is a new
+  finalize attempt, and it may bind whatever generation is current by then.
+  Only the attempt that reaches the terminal commit becomes durable, so there
+  is nothing to compare two attempts against.
+* **Replay after the terminal commit** returns the stored response and the
+  generation recorded with it. It does not re-bind and does not re-evaluate, so
+  a feed published between your two requests does not change the answer you
+  get — which is the point: a committed terminal result is stable.
+
+The finalize observation itself is **best effort**. It is produced after the
+terminal commit, it is not re-produced by a replay, and if the process fails in
+that interval it is simply absent. Treat a missing observation on a terminal
+chunk row as "not recorded", never as "nothing was found".
+
 ## Error handling
 
 The error envelope is the same OpenAI-compatible shape used elsewhere: `{"error": {"message", "type", "code"}}`. The full list lives in the [`POST /chunks` API reference](../api-reference/jobs.md#post-v1jobsjob_idchunks). The codes you'll handle most often:
