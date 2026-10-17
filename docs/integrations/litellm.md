@@ -36,7 +36,8 @@ at most 5 s more.
 * Python 3.11 or later in the proxy's environment. The package needs only
   `httpx`, which LiteLLM already has.
 * A CollieAi project for the guardrail, with an [API key](../getting-started/api-keys.md)
-  (`clai_…`). Its policy may hold only dictionary rules, see below.
+  (`clai_…`), and a policy for it that holds only dictionary rules. A new
+  project starts with Starter Monitor, which doesn't qualify, see below.
 
 ## Your project's policy
 
@@ -50,8 +51,7 @@ and the phase counts as a bypass with the reason `capability`. That happens
 with:
 
 * a rule of any other type: regex, structured IDs, URL rules, LLM detection
-  and so on. The Starter Monitor policy has such rules, so give the guardrail
-  a project of its own;
+  and so on;
 * more than 16 rules for one direction, or more than 8 dictionary rules;
 * a dictionary rule on a dictionary group, a dictionary over 256 KiB, or a
   match mode other than `substring` with `whole_word` on;
@@ -59,6 +59,19 @@ with:
 
 CollieAi's Logs show such a check with the error `capability:<what>`, for
 example `capability:rule_type`.
+
+**Set the policy up before you connect the proxy.** A new project starts with
+the [Starter Monitor](../getting-started/quick-start.md) policy, which has
+rules of other types, so a new project alone still gives `bypass:capability`:
+
+1. Give the guardrail's project a [policy](../projects-and-policies/policies.md)
+   that holds only `aho_corasick` rules and normalization rules without
+   `trim_punctuation`, within the limits above. Create one, or delete or
+   disable every other Input and Output rule in a policy no other project
+   uses.
+2. After you install the guardrail, send a test request through the proxy.
+   Both phases must show `completed`, see [Check that it works](#check-that-it-works).
+   `bypass:capability` means a rule is still outside what the guardrail runs.
 
 ## Install and configure
 
@@ -113,8 +126,10 @@ own machine.
    `bypass:transport` when CollieAi can't be reached.
 2. **Within a minute**, each worker writes a `collieai guardrail summary` line
    with its counts. No line means the guardrail is not loaded.
-3. **Send a test request** through the proxy. The next summary shows
+3. **Send a test request** through the proxy. The next summary must show
    `completed` for both phases, and the check appears in CollieAi's Logs.
+   `bypass` with `capability` means the policy still has a rule the
+   guardrail doesn't run.
 
 ## What you see
 
