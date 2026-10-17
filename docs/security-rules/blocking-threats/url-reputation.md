@@ -160,7 +160,8 @@ buffers these streams. If time-to-first-token matters more than checking model
 output, put the rule on input only (`direction: "inbound"`).
 
 [Customer-owned streaming](../../async-jobs/customer-owned-streaming.md) is the
-separate path: there CollieAi never holds your chunks, and the check runs at
+separate path: there CollieAi never holds your chunks. An enforced rule on
+output makes that route refuse the session; under Monitor the check runs at
 finalize over the completed response.
 
 ## Context analysis
@@ -238,5 +239,8 @@ New accounts get both feeds in the **Starter Monitor** policy that
 default: for ThreatFox, all three IOC types at confidence 90 or higher, with
 compromised domains left out; for URLhaus, every URL status; for both, a
 24-hour maximum feed age. Starter Monitor runs in Monitor mode, so both rules record findings and
-block nothing until you switch the policy to Enforce. A deployment where the
-rule type is not available creates Starter Monitor without them.
+block nothing. Switch the policy to Enforce and the ThreatFox rule blocks; the
+URLhaus rule keeps recording would-block findings for as long as your
+deployment restricts URLhaus to Monitor, as the hosted service does today. A
+deployment where the rule type is not available creates Starter Monitor
+without them.
