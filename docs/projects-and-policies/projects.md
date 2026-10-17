@@ -23,7 +23,7 @@ A project is an isolated context within CollieAi. Each project has its own API k
 
 When you create a project, CollieAi automatically:
 
-1. Assigns your **default policy** as the project's active policy. (If you have not starred a default policy, one is created for you.)
+1. Assigns your **default policy** as the project's active policy. If you have no default policy yet, the **Starter Monitor** policy is created and becomes your default — the same policy [Get Started](../getting-started/quick-start.md) creates on your first sign-in. It runs in Monitor mode: findings appear in Logs, and nothing is blocked or changed until you switch it to Enforce.
 2. Creates an **API key** for the project so you can start sending requests immediately.
 
 ```bash
