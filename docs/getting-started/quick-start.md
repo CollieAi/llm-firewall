@@ -40,7 +40,7 @@ Starter Monitor runs in **Monitor** mode: nothing is blocked or changed, and eve
 | Prompt Security (Dictionary) | known prompt-injection phrases                        | Input           |
 | PII (Structured IDs)         | card numbers, IBANs and BICs — masked in Enforce      | Input and Output |
 | Malicious URLs (ThreatFox)   | links to known malware and command-and-control hosts  | Input and Output |
-| Malicious URLs (URLhaus)     | links to known malware downloads                      | Input and Output |
+| Malicious URLs (URLhaus)     | links to known malware downloads — stays in Monitor on the hosted service, even under Enforce | Input and Output |
 | Hidden Payloads (Base64)     | base64-encoded payloads hidden in text                | Input and Output |
 | Prompt Injection (LLM)       | prompt injection, judged by an LLM                    | Input           |
 | Output Safety                | unsafe model output                                   | Output          |
@@ -63,7 +63,7 @@ Get Started lists the ways to connect. Pick one; **All options** takes you back 
 | Async Jobs API                    | not needed — you call your own model | input, and output if you send it    |
 | Playground                        | not needed                           | a prompt and a model answer you paste |
 
-Each option walks you through the same steps:
+Every option except the Playground walks you through these steps — four for the proxies, three for the SDK and the Async Jobs API, which need no provider key:
 
 1. **Add your provider key** (proxies only). CollieAi forwards your requests to OpenAI or Anthropic with your own key, stored encrypted. Without it every proxied request is refused.
 2. **Put your CollieAi key in the app's environment** as `COLLIEAI_API_KEY`.
@@ -87,7 +87,7 @@ resp = client.chat.completions.create(
 print(resp.choices[0].message.content)
 ```
 
-The Playground needs no code: requests from it show in Logs, but do not count as a connected app.
+The Playground opens directly — no steps and no code. Requests from it show in Logs, but do not count as a connected app.
 {% endstep %}
 
 {% step %}
