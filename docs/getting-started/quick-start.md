@@ -1,13 +1,16 @@
 ---
 description: >-
-  CollieAi quick start — get your first secured LLM call running in about five
-  minutes. Sign up, add a provider token, create a policy, and send a request.
+  CollieAi quick start — sign up, and Get Started gives you a project, an API
+  key and the Starter Monitor policy. Connect your app and see your first
+  checked request in about five minutes.
 icon: bolt-auto
 ---
 
 # Quick start
 
-This CollieAi quick start gets your first secured LLM call running in about five minutes. You will sign up, add a provider token, create a project and policy, generate an API key, and send your first request through the CollieAi AI firewall.
+This CollieAi quick start gets your first secured LLM call running in about five minutes. When you sign up, CollieAi creates a project, an API key and a ready-made policy for you. You connect your app, send a request and see what the policy found.
+
+Prefer to build everything yourself? See [Set up by hand](quick-start.md#set-up-by-hand) below.
 
 {% stepper %}
 {% step %}
@@ -20,6 +23,87 @@ All new accounts start on the **Free plan** - 20,000 API calls/month with full a
 See [Authentication](authentication.md) for more details on sign-in methods.
 {% endstep %}
 
+{% step %}
+### Open Get Started
+
+After your first sign-in CollieAi opens **Get Started** and creates three things for you:
+
+* a project, **My project**;
+* an API key for it, starting with `clai_`. It is shown once, so copy it now — **Copy .env line** gives you `COLLIEAI_API_KEY=clai_...` for your app's environment;
+* the **Starter Monitor** policy, which becomes the project's policy and your default policy.
+
+Starter Monitor runs in **Monitor** mode: nothing is blocked or changed, and every finding appears in **Logs**. When you have seen what it finds, open **Configure rules** and switch the policy to **Enforce**.
+
+| Rule                         | What it checks                                        | Direction       |
+| ---------------------------- | ----------------------------------------------------- | --------------- |
+| Language Allowlist (Europe)  | the input language — European languages pass          | Input           |
+| Prompt Security (Dictionary) | known prompt-injection phrases                        | Input           |
+| PII (Structured IDs)         | card numbers, IBANs and BICs — masked in Enforce      | Input and Output |
+| Malicious URLs (ThreatFox)   | links to known malware and command-and-control hosts  | Input and Output |
+| Malicious URLs (URLhaus)     | links to known malware downloads — stays in Monitor on the hosted service, even under Enforce | Input and Output |
+| Hidden Payloads (Base64)     | base64-encoded payloads hidden in text                | Input and Output |
+| Prompt Injection (LLM)       | prompt injection, judged by an LLM                    | Input           |
+| Output Safety                | unsafe model output                                   | Output          |
+
+{% hint style="info" %}
+If your CollieAi server cannot run one of these rules yet — its model or feed is not available there — Get Started lists it under **Not added on this server**, and the policy is created without it. Your copy of the policy is yours: a rule skipped today is not added later by itself.
+{% endhint %}
+{% endstep %}
+
+{% step %}
+### Connect your app
+
+Get Started lists the ways to connect. Pick one; **All options** takes you back to the list at any time.
+
+| Option                            | Your provider key                    | What CollieAi checks                |
+| --------------------------------- | ------------------------------------ | ----------------------------------- |
+| OpenAI-compatible proxy           | OpenAI                               | input and output                    |
+| Anthropic proxy                   | Anthropic                            | input and output                    |
+| CollieAi SDK (Python, Node, .NET) | not needed — you call your own model | input and output, streams included  |
+| Async Jobs API                    | not needed — you call your own model | input, and output if you send it    |
+| Playground                        | not needed                           | a prompt and a model answer you paste |
+
+Every option except the Playground walks you through these steps — four for the proxies, three for the SDK and the Async Jobs API, which need no provider key:
+
+1. **Add your provider key** (proxies only). CollieAi forwards your requests to OpenAI or Anthropic with your own key, stored encrypted. Without it every proxied request is refused.
+2. **Put your CollieAi key in the app's environment** as `COLLIEAI_API_KEY`.
+3. **Let a coding agent do it.** Using Claude Code, Codex or Cursor? Copy the instruction and paste it into the agent. The instruction contains no key.
+4. **Or add the code yourself.** Get Started shows the code for each language, with the line that points your app at CollieAi highlighted.
+
+For the OpenAI-compatible proxy that line is the `base_url`:
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["COLLIEAI_API_KEY"],
+    base_url="https://app.collieai.io/v1",
+)
+resp = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello through CollieAi"}],
+)
+print(resp.choices[0].message.content)
+```
+
+The Playground opens directly — no steps and no code. Requests from it show in Logs, but do not count as a connected app.
+{% endstep %}
+
+{% step %}
+### See your first request
+
+The **Last request** card on Get Started shows your latest request within seconds: when it arrived, through which option, and whether it went through, was blocked by the policy, is still being processed or failed — with the reason. If the provider key is missing or the provider refused it, the card says so, with a button to **Provider tokens**.
+
+**Open Logs** shows the full record of the request and what each rule found.
+{% endstep %}
+{% endstepper %}
+
+## Set up by hand
+
+Everything Get Started creates can also be made by hand — for example, a second project with a policy of your own.
+
+{% stepper %}
 {% step %}
 ### Add a Provider Token
 
