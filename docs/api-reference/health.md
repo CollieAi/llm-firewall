@@ -7,7 +7,7 @@ icon: stethoscope
 
 # Health
 
-Health check endpoints for monitoring application status and dependencies. All health endpoints return `200 OK` and report state in the response body (they do not return `503`); a `timestamp` (Unix seconds) is included on every response.
+Health check endpoints for monitoring application status and dependencies. For an external uptime monitor use [`GET /api/v1/health/status`](#get-api-v1-health-status): it is the one endpoint that answers `503` when something is wrong. The others return `200 OK` and report state in the response body; they carry a `timestamp` (Unix seconds).
 
 ***
 
@@ -35,6 +35,62 @@ curl https://app.collieai.io/api/v1/health
   "timestamp": 1737021000.123
 }
 ```
+
+***
+
+## GET /api/v1/health/status
+
+Strict status for external monitoring. Returns `200` only when everything enabled on the host works — Postgres, Redis, ClickHouse, the inference runners and, where streaming moderation runs, the guard runner (its model must be loaded). Otherwise `503`, so a plain uptime check sees an outage by the status code.
+
+The answer comes within about 3 seconds even when a dependency hangs (that dependency then reads `false`). Each API process checks at most once every 5 seconds, so polling every 30–60 seconds is plenty.
+
+`version` is the CollieAi release; `revision` identifies the exact build running. A change of `revision` means a new release was deployed — useful to tell whether an error spike started with a deploy.
+
+**URL:** `https://app.collieai.io/api/v1/health/status`
+
+**Auth:** None
+
+### Example Request
+
+```bash
+curl -i https://app.collieai.io/api/v1/health/status
+```
+
+### Response -- `200 OK`
+
+```json
+{
+  "status": "ok",
+  "components": {
+    "postgres": true,
+    "redis": true,
+    "clickhouse": true,
+    "inference": true,
+    "guard": true
+  },
+  "version": "1.0.1",
+  "revision": "6f14f8983b1c"
+}
+```
+
+### Response -- `503 Service Unavailable`
+
+```json
+{
+  "status": "degraded",
+  "components": {
+    "postgres": true,
+    "redis": true,
+    "clickhouse": true,
+    "inference": true,
+    "guard": false
+  },
+  "version": "1.0.1",
+  "revision": "6f14f8983b1c"
+}
+```
+
+`guard` is present only on hosts that run the guard runner.
 
 ***
 
@@ -69,7 +125,7 @@ curl https://app.collieai.io/api/v1/health/ready
 }
 ```
 
-`status` is `"ready"` when all `checks` are `true`, otherwise `"not_ready"` (still HTTP `200`). `inference` is `null` when `INFERENCE_BACKEND=local`; in `http` mode it carries runner diagnostics (`ready` plus per-runner detail).
+`status` is `"ready"` when all `checks` are `true`, otherwise `"not_ready"` (still HTTP `200`). `inference` carries runner diagnostics: `ready` plus which runners are enabled and ready.
 
 ***
 
@@ -120,9 +176,8 @@ curl https://app.collieai.io/api/v1/health/models
     "language_detection": {
       "loaded": true,
       "default_model_id": "fasttext/lid.176.ftz",
-      "model_path": "/models/lid.176.ftz",
       "models": {
-        "fasttext/lid.176.ftz": { "downloaded": true, "model_path": "/models/lid.176.ftz" }
+        "fasttext/lid.176.ftz": { "downloaded": true }
       }
     },
     "lightweight_classifiers": {
