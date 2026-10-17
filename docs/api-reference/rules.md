@@ -1,7 +1,7 @@
 ---
 description: >-
   CollieAi Rules API — create, list, update, delete, and test security rules
-  within a policy via /api/v1/policies/{policy_id}/rules, with all 10 rule types.
+  within a policy via /api/v1/policies/{policy_id}/rules, with all 12 rule types.
 icon: sliders-simple
 ---
 
@@ -18,13 +18,14 @@ The project-independent endpoints under `/api/v1/policies/{policy_id}/rules` are
 | `name`             | string  | Yes      | Rule display name                                                                                                                                                 |
 | `description`      | string  | No       | Human-readable description                                                                                                                                        |
 | `rule_type`        | string  | Yes      | Rule type (see values below). Cannot be changed after creation                                                                                                    |
-| `order`            | integer | No       | Evaluation order (lower runs first). Default: 0                                                                                                                   |
-| `direction`        | string  | Yes      | When to evaluate: `inbound` (Input), `outbound` (Output), or `all`. The dashboard labels these "Input" / "Output" / "All"; the API field uses the literal values. |
-| `decision`         | string  | Yes      | Action on match: `allow`, `mask`, or `block`                                                                                                                      |
+| `order`            | integer | No       | Evaluation order (lower runs first). Default: `5`                                                                                                                 |
+| `direction`        | string  | No       | When to evaluate: `inbound` (Input), `outbound` (Output), or `all`. Default: `all`. The dashboard labels these "Input" / "Output" / "All"; the API field uses the literal values. `qwen3guard_stream` accepts only `outbound`. |
+| `decision`         | string  | Yes      | Action on match: `allow`, `mask`, or `block`. `url_reputation` and `tool_access` accept only `block`.                                                             |
 | `config`           | object  | Yes      | Rule-type-specific configuration (validated per `rule_type`)                                                                                                      |
-| `block_message`    | string  | No       | Custom message returned when the rule blocks a request                                                                                                            |
+| `block_message`    | string  | No       | Custom message returned when the rule blocks a request. Default: `Message blocked by security policy`                                                             |
 | `is_enabled`       | boolean | No       | Whether the rule is active. Default: `true`                                                                                                                       |
-| `enforcement_mode` | string  | No       | `enforce` (default) or `monitor` (evaluate but never block)                                                                                                       |
+| `enforcement_mode` | string  | No       | `inherit` (default — follow the policy's mode), `enforce`, or `monitor` (evaluate but never block)                                                                |
+| `targeting`        | object  | No       | Where the rule applies. Omitted or `null`: chat and API messages only. See [Targeting](rules.md#targeting)                                                        |
 
 ### Rule Types
 
@@ -33,12 +34,39 @@ The project-independent endpoints under `/api/v1/policies/{policy_id}/rules` are
 | `regex`              | Match content against regular expression patterns       |
 | `aho_corasick`       | Dictionary Match — multi-pattern string matching        |
 | `url_filter`         | Detect and filter URLs                                  |
+| `url_reputation`     | Block URLs listed in a threat-intelligence feed         |
 | `structured_id`      | Detect structured identifiers (SSN, credit cards, etc.) |
 | `base64_payload`     | Detect base64-encoded payloads                          |
 | `normalization`      | Text normalization before evaluation                    |
 | `lightweight_model`  | ML-based classification (prompt injection, toxicity)    |
 | `llm_detection`      | LLM-based content evaluation                            |
 | `language_detection` | Detect and filter by language                           |
+| `qwen3guard_stream`  | Streaming guard — safety check of model output (Output only) |
+| `tool_access`        | Allow or deny MCP tool calls by server and tool name    |
+
+### Targeting
+
+A rule without `targeting` checks chat and API messages — every rule created before targeting existed works this way. Rules never apply to tool calls through the MCP gateway unless their `targeting` says so.
+
+| Field        | Type             | Description                                                                                                           |
+| ------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `surfaces`   | array of strings | Required. `message` (chat and API messages), `mcp` (tool calls through the MCP gateway), or both                       |
+| `stages`     | array of strings | `mcp` only. `pre` (tool arguments), `post` (tool results), `catalog` (a server's tool list). Default: `pre` and `post` |
+| `server_ids` | array of strings | `mcp` only. Apply to these MCP servers only                                                                           |
+| `tool_names` | array of strings | `mcp` only. Apply to these tools only                                                                                 |
+| `registry`   | object           | `mcp` only. Match tools by their registry properties: `mutating`, `destructive`, `open_world`, `confirmation_expected` (each `true` or `false`) |
+| `principal`  | object           | `mcp` only. Match the caller: `roles_any`, `user_ids`, `company_ids`                                                  |
+
+All selectors must match; a selector you leave out matches anything. A message-only rule may not carry `stages` or selectors.
+
+* `tool_access` must target exactly the `mcp` surface and the `pre` stage (its default), with `direction` `inbound` or `all` and `decision` `block`. Its `config` is `mode` (`allowlist` or `blocklist`) and `tools`, a list of `{"tool_name": ..., "server_id": ...}`; without `server_id` the entry matches that tool on any server.
+* `url_reputation` runs on messages only; `mcp` targeting is refused.
+* A rule with the `catalog` stage must have `direction` `inbound` or `all`.
+* A detector that fails open — `decision_on_error: "allow"`, set or by default, and always `qwen3guard_stream` — may not target tools that can change data, delete or reach outside systems. Set `decision_on_error: "block"` where the rule type has it, or confine the rule with `registry` `mutating`, `destructive` and `open_world` all `false`.
+
+{% hint style="info" %}
+The MCP gateway currently evaluates every MCP rule in Monitor: it reports what a rule would block and does not block the call (`coverage.forced_monitor: true` in its response).
+{% endhint %}
 
 ## GET /api/v1/policies/{policy\_id}/rules
 
@@ -196,7 +224,7 @@ Update an existing rule. The `rule_type` field cannot be changed.
 
 ### Request Body
 
-All fields are optional. Only provided fields are updated.
+All fields are optional. Only provided fields are updated. Send `"targeting": null` to make the rule message-only again.
 
 ### Example Request
 
