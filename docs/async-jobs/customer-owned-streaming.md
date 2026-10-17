@@ -163,6 +163,47 @@ A session is terminal when:
 
 Once terminal, subsequent submits return `409 chunk_session_finished` — create a new job to start a new stream. The terminal state is also published as the SSE `end` event with `reason: final` (`is_final` flush), `reason: blocked` (rule block), or `reason: session_unrecoverable` (rare: the session entered a state no retry can repair — a stream gap from a prior commit failure, lost or foreign emit history, lost session state, or corrupt/unreadable session state).
 
+## URL reputation on a customer-owned stream
+
+A [URL reputation](../security-rules/blocking-threats/url-reputation.md) rule
+cannot judge a partial URL, and on this path CollieAi does not hold your
+chunks — you release them to your own client. What happens depends on whether
+the rule on output is enforced:
+
+* **Enforced** — the policy and the rule are in Enforce, and your deployment
+  does not restrict the rule's feed to Monitor. The rule needs the complete
+  response before anything is released, so this route cannot serve the
+  policy: a new chunk session is refused with `400 chunk_streaming_unsupported`.
+  Send the completed response to the
+  [`/response` endpoint](../api-reference/jobs.md#post-v1jobsjob_idresponse)
+  instead — it is checked before you release it — or put the rule on input
+  only (`direction: "inbound"`).
+* **Monitor** — the policy's, the rule's own, or a feed your deployment
+  restricts to Monitor (URLhaus on the hosted service today). The stream is
+  served. The check runs at **finalize**, over the completed response, and its
+  result is recorded rather than applied to bytes that are already gone. Plan
+  for it the way you plan for any monitor-mode finding: the log may tell you
+  that a released response contained a known-malicious link, and what you do
+  about it is your application's decision.
+
+Two properties of that are worth knowing precisely, because they are narrower
+than "the check always runs and is always recorded":
+
+* **A failure before the terminal commit leaves nothing stored** — no response
+  and no record of which feed generation was consulted. Your retry is a new
+  finalize attempt, and it may bind whatever generation is current by then.
+  Only the attempt that reaches the terminal commit becomes durable, so there
+  is nothing to compare two attempts against.
+* **Replay after the terminal commit** returns the stored response and the
+  generation recorded with it. It does not re-bind and does not re-evaluate, so
+  a feed published between your two requests does not change the answer you
+  get — which is the point: a committed terminal result is stable.
+
+The finalize observation itself is **best effort**. It is produced after the
+terminal commit, it is not re-produced by a replay, and if the process fails in
+that interval it is simply absent. Treat a missing observation on a terminal
+chunk row as "not recorded", never as "nothing was found".
+
 ## Error handling
 
 The error envelope is the same OpenAI-compatible shape used elsewhere: `{"error": {"message", "type", "code"}}`. The full list lives in the [`POST /chunks` API reference](../api-reference/jobs.md#post-v1jobsjob_idchunks). The codes you'll handle most often:
@@ -173,7 +214,7 @@ The error envelope is the same OpenAI-compatible shape used elsewhere: `{"error"
 | `chunk_filter_timeout` (`504`) | Retry the SAME sequence with backoff. The chunk wasn't accepted; retries are safe via idempotency.                                                                                               |
 | `chunk_concurrent_submit`      | Another submit is in flight. Serialize submissions per job\_id.                                                                                                                                  |
 | `chunk_session_finished`       | The session is over (final or block). Stop submitting; this job is done.                                                                                                                         |
-| `chunk_streaming_unsupported`  | The project's policy can't stream (e.g. has an LLM-detection rule). Use the [synchronous `/response` endpoint](../api-reference/jobs.md#post-v1jobsjob_idresponse) instead, or split the policy. |
+| `chunk_streaming_unsupported`  | The project's policy can't stream (e.g. has an LLM-detection rule, or an enforced URL reputation rule on output). Use the [synchronous `/response` endpoint](../api-reference/jobs.md#post-v1jobsjob_idresponse) instead, or split the policy. |
 | `chunk_session_unrecoverable`  | The session entered a state no retry can repair — a stream gap from a prior commit failure, lost or foreign emit history, lost session state, or corrupt/unreadable session state (very rare). Create a new job.                                   |
 | `chunk_idempotency_conflict`   | You re-submitted a sequence with a different body. Use a new sequence number for new content.                                                                                                    |
 | `chunk_policy_changed`         | The project's policy changed mid-stream. Create a new job — it picks up the updated policy.                                                                                                      |

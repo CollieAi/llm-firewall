@@ -123,6 +123,19 @@ if (input.Blocked) return input.BlockMessage ?? "Blocked by policy.";
 The same `context` argument works on the streaming wrappers (`protect_stream` /
 `protect_buffered`) when the input check runs.
 
+## URL reputation inside context
+
+[URL reputation](blocking-threats/url-reputation.md) rules run over context
+documents too. Each leaf of the document is checked on its own — against the
+leaf's original text, never a normalized copy, because the check is on the
+exact address — and a finding records which leaf it came from, so you can see
+WHERE in the document the link was.
+
+The same per-request limits apply as everywhere else: a bounded number of URL
+candidates per check, and an explicit "coverage partial" result when a
+document is too large to examine completely. A partial check is never silently
+reported as a clean one.
+
 ## Reading the verdict
 
 The input result gains a typed `context` sub-result and a `blocked_by` field:
