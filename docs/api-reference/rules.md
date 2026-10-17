@@ -82,6 +82,14 @@ List all rules in a policy.
 | ----------- | ------ | --------------------- |
 | `policy_id` | string | The policy identifier |
 
+### Query Parameters
+
+| Parameter      | Type    | Description                                     |
+| -------------- | ------- | ----------------------------------------------- |
+| `enabled_only` | boolean | Return only enabled rules. Default: `false`      |
+
+Rules come back in evaluation order: by `order`, then by creation time.
+
 ### Example Request
 
 ```bash
@@ -94,40 +102,68 @@ curl https://app.collieai.io/api/v1/policies/pol_abc123/rules \
 ```json
 {
   "rules": [
-  {
-    "id": "rule_001",
-    "name": "SSN Pattern Detection",
-    "description": "Detect Social Security Number patterns",
-    "rule_type": "regex",
-    "order": 1,
-    "direction": "all",
-    "decision": "block",
-    "config": {
-      "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+    {
+      "id": "rule_001",
+      "name": "SSN Pattern Detection",
+      "description": "Detect Social Security Number patterns",
+      "rule_type": "regex",
+      "order": 1,
+      "direction": "all",
+      "decision": "block",
+      "config": {
+        "patterns": [
+          {
+            "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+            "replacement": null,
+            "flags": 0
+          }
+        ],
+        "mask_char": "*",
+        "streaming_window_chars": null,
+        "allowlist": null
+      },
+      "block_message": "SSN pattern detected in content",
+      "is_enabled": true,
+      "enforcement_mode": "enforce",
+      "targeting": null,
+      "project_id": null,
+      "policy_id": "pol_abc123",
+      "triggered_count": 14,
+      "last_triggered_at": "2025-01-14T16:20:00Z",
+      "created_at": "2025-01-10T08:00:00Z",
+      "updated_at": "2025-01-10T08:00:00Z"
     },
-    "block_message": "SSN pattern detected in content",
-    "is_enabled": true,
-    "enforcement_mode": "enforce",
-    "created_at": "2025-01-10T08:00:00Z",
-    "updated_at": "2025-01-10T08:00:00Z"
-  },
-  {
-    "id": "rule_002",
-    "name": "Banned Terms",
-    "description": "Block messages containing prohibited terms",
-    "rule_type": "aho_corasick",
-    "order": 2,
-    "direction": "inbound",
-    "decision": "block",
-    "config": {
-      "dictionary_id": "dict_abc123"
-    },
-    "block_message": null,
-    "is_enabled": true,
-    "enforcement_mode": "enforce",
-    "created_at": "2025-01-10T08:30:00Z",
-    "updated_at": "2025-01-12T14:00:00Z"
-  }
+    {
+      "id": "rule_002",
+      "name": "Banned Terms",
+      "description": "Block messages containing prohibited terms",
+      "rule_type": "aho_corasick",
+      "order": 2,
+      "direction": "inbound",
+      "decision": "block",
+      "config": {
+        "dictionary_id": "7d0c6a3e-2b1f-4c8e-9a51-3f2d8e6b4c10",
+        "dictionary_group_id": null,
+        "languages": null,
+        "always_include_english": false,
+        "replacement": null,
+        "mask_char": "*",
+        "whole_word": true,
+        "case_sensitive": false,
+        "match_mode": "substring",
+        "window_size": 10
+      },
+      "block_message": "Message blocked by security policy",
+      "is_enabled": true,
+      "enforcement_mode": "inherit",
+      "targeting": null,
+      "project_id": null,
+      "policy_id": "pol_abc123",
+      "triggered_count": 0,
+      "last_triggered_at": null,
+      "created_at": "2025-01-10T08:30:00Z",
+      "updated_at": "2025-01-12T14:00:00Z"
+    }
   ],
   "total": 2
 }
@@ -139,6 +175,71 @@ curl https://app.collieai.io/api/v1/policies/pol_abc123/rules \
 | ------ | ----------------- |
 | `401`  | Not authenticated |
 | `404`  | Policy not found  |
+
+## GET /api/v1/policies/{policy\_id}/rules/{rule\_id}
+
+Get one rule. Works for your own policies and for system policies.
+
+**URL:** `https://app.collieai.io/api/v1/policies/{policy_id}/rules/{rule_id}`
+
+**Auth:** Session cookie or Bearer token
+
+### Path Parameters
+
+| Parameter   | Type   | Description           |
+| ----------- | ------ | --------------------- |
+| `policy_id` | string | The policy identifier |
+| `rule_id`   | string | The rule identifier   |
+
+### Example Request
+
+```bash
+curl https://app.collieai.io/api/v1/policies/pol_abc123/rules/rule_001 \
+  -H "Authorization: Bearer <token>"
+```
+
+### Response -- `200 OK`
+
+```json
+{
+  "id": "rule_001",
+  "name": "SSN Pattern Detection",
+  "description": "Detect Social Security Number patterns",
+  "rule_type": "regex",
+  "order": 1,
+  "direction": "all",
+  "decision": "block",
+  "config": {
+    "patterns": [
+      {
+        "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+        "replacement": null,
+        "flags": 0
+      }
+    ],
+    "mask_char": "*",
+    "streaming_window_chars": null,
+    "allowlist": null
+  },
+  "block_message": "SSN pattern detected in content",
+  "is_enabled": true,
+  "enforcement_mode": "enforce",
+  "targeting": null,
+  "project_id": null,
+  "policy_id": "pol_abc123",
+  "triggered_count": 14,
+  "last_triggered_at": "2025-01-14T16:20:00Z",
+  "created_at": "2025-01-10T08:00:00Z",
+  "updated_at": "2025-01-10T08:00:00Z"
+}
+```
+
+### Error Responses
+
+| Status | Description                                         |
+| ------ | --------------------------------------------------- |
+| `401`  | Not authenticated                                   |
+| `404`  | Policy not found, or the rule is not in this policy |
 
 ## POST /api/v1/policies/{policy\_id}/rules
 
@@ -165,19 +266,25 @@ curl -X POST https://app.collieai.io/api/v1/policies/pol_abc123/rules \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Regex Filter",
-    "rule_type": "regex",
-    "direction": "inbound",
-    "decision": "block",
-    "config": {
-      "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b"
-    },
-    "block_message": "SSN pattern detected",
-    "order": 3
-  }'
+      "name": "Regex Filter",
+      "rule_type": "regex",
+      "direction": "inbound",
+      "decision": "block",
+      "config": {
+        "patterns": [
+          {
+            "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+          }
+        ]
+      },
+      "block_message": "SSN pattern detected",
+      "order": 3
+    }'
 ```
 
 ### Response -- `201 Created`
+
+The response is the rule as stored: `config` is normalized, with every field the rule type accepts, and fields you left out carry their defaults (`enforcement_mode` is `inherit`).
 
 ```json
 {
@@ -189,11 +296,25 @@ curl -X POST https://app.collieai.io/api/v1/policies/pol_abc123/rules \
   "direction": "inbound",
   "decision": "block",
   "config": {
-    "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+    "patterns": [
+      {
+        "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+        "replacement": null,
+        "flags": 0
+      }
+    ],
+    "mask_char": "*",
+    "streaming_window_chars": null,
+    "allowlist": null
   },
   "block_message": "SSN pattern detected",
   "is_enabled": true,
-  "enforcement_mode": "enforce",
+  "enforcement_mode": "inherit",
+  "targeting": null,
+  "project_id": null,
+  "policy_id": "pol_abc123",
+  "triggered_count": 0,
+  "last_triggered_at": null,
   "created_at": "2025-01-15T10:00:00Z",
   "updated_at": "2025-01-15T10:00:00Z"
 }
@@ -204,6 +325,7 @@ curl -X POST https://app.collieai.io/api/v1/policies/pol_abc123/rules \
 | Status | Description                                                |
 | ------ | ---------------------------------------------------------- |
 | `401`  | Not authenticated                                          |
+| `403`  | The policy is a system policy and cannot be changed        |
 | `404`  | Policy not found                                           |
 | `422`  | Validation error (invalid `rule_type`, bad `config`, etc.) |
 
@@ -250,11 +372,25 @@ curl -X PATCH https://app.collieai.io/api/v1/policies/pol_abc123/rules/rule_003 
   "direction": "inbound",
   "decision": "block",
   "config": {
-    "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+    "patterns": [
+      {
+        "pattern": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+        "replacement": null,
+        "flags": 0
+      }
+    ],
+    "mask_char": "*",
+    "streaming_window_chars": null,
+    "allowlist": null
   },
   "block_message": "SSN pattern detected",
   "is_enabled": false,
   "enforcement_mode": "monitor",
+  "targeting": null,
+  "project_id": null,
+  "policy_id": "pol_abc123",
+  "triggered_count": 0,
+  "last_triggered_at": null,
   "created_at": "2025-01-15T10:00:00Z",
   "updated_at": "2025-01-15T11:00:00Z"
 }
@@ -265,6 +401,7 @@ curl -X PATCH https://app.collieai.io/api/v1/policies/pol_abc123/rules/rule_003 
 | Status | Description              |
 | ------ | ------------------------ |
 | `401`  | Not authenticated        |
+| `403`  | System policy — cannot be changed |
 | `404`  | Policy or rule not found |
 | `422`  | Validation error         |
 
@@ -299,6 +436,7 @@ No response body.
 | Status | Description              |
 | ------ | ------------------------ |
 | `401`  | Not authenticated        |
+| `403`  | System policy — cannot be changed |
 | `404`  | Policy or rule not found |
 
 ## POST /api/v1/policies/{policy\_id}/rules/{rule\_id}/test
@@ -321,7 +459,7 @@ Test a rule against sample content without affecting live traffic.
 | Field       | Type   | Required | Description                                                        |
 | ----------- | ------ | -------- | ------------------------------------------------------------------ |
 | `message`   | string | Yes      | The text content to test against the rule                          |
-| `direction` | string | No       | Test direction: `inbound` (Input side) or `outbound` (Output side) |
+| `direction` | string | Yes      | Test direction: `inbound` (Input side) or `outbound` (Output side) |
 
 ### Example Request
 
@@ -350,15 +488,20 @@ curl -X POST https://app.collieai.io/api/v1/policies/pol_abc123/rules/rule_001/t
         "end": 21
       }
     ]
-  }
+  },
+  "enforcement_mode": "enforce",
+  "no_enforce_reason": null
 }
 ```
+
+`enforcement_mode` says what the rule would actually do under its policy and this deployment: `enforce` or `monitor`. When it would not enforce, `no_enforce_reason` says why — the policy's or the rule's own Monitor mode, a deployment that restricts the rule's source to Monitor (`source_monitor_only`), or a decision the rule type does not support. Both are `null` when nothing matched.
 
 ### Error Responses
 
 | Status | Description              |
 | ------ | ------------------------ |
 | `401`  | Not authenticated        |
+| `403`  | System policy — cannot be changed |
 | `404`  | Policy or rule not found |
 | `422`  | Validation error         |
 
@@ -369,6 +512,7 @@ All rule endpoints are also available under a project scope. Behavior is identic
 | Project-Independent                            | Project-Scoped                                               |
 | ---------------------------------------------- | ------------------------------------------------------------ |
 | `GET /api/v1/policies/{pid}/rules`             | `GET /api/v1/projects/{id}/policies/{pid}/rules`             |
+| `GET /api/v1/policies/{pid}/rules/{rid}`       | `GET /api/v1/projects/{id}/policies/{pid}/rules/{rid}`       |
 | `POST /api/v1/policies/{pid}/rules`            | `POST /api/v1/projects/{id}/policies/{pid}/rules`            |
 | `PATCH /api/v1/policies/{pid}/rules/{rid}`     | `PATCH /api/v1/projects/{id}/policies/{pid}/rules/{rid}`     |
 | `DELETE /api/v1/policies/{pid}/rules/{rid}`    | `DELETE /api/v1/projects/{id}/policies/{pid}/rules/{rid}`    |
@@ -381,6 +525,7 @@ These operate on the active policy of a project. Maintained for backward compati
 | Method | Path                                                 | Description                    |
 | ------ | ---------------------------------------------------- | ------------------------------ |
 | GET    | `/api/v1/projects/{project_id}/rules`                | List rules in active policy    |
+| GET    | `/api/v1/projects/{project_id}/rules/{rule_id}`      | Get rule in active policy      |
 | POST   | `/api/v1/projects/{project_id}/rules`                | Create rule in active policy   |
 | PATCH  | `/api/v1/projects/{project_id}/rules/{rule_id}`      | Update rule in active policy   |
 | DELETE | `/api/v1/projects/{project_id}/rules/{rule_id}`      | Delete rule from active policy |
