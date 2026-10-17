@@ -51,6 +51,7 @@ and a scanner:
 * No DNS resolution, no URL visiting, no redirect or shortener unwinding, no file scanning.
 * No subdomain inheritance: a feed entry for `evil.test` does not block `login.evil.test`.
 * One feed per rule — two feeds means two rules.
+* Message traffic only — the rule does not apply to MCP tool calls (`mcp` targeting is refused).
 
 ## Rule Configuration
 
@@ -101,11 +102,12 @@ A field that belongs to the other source is refused, even when it is `false`.
   "config": {
     "source": "urlhaus",
     "url_status": ["online", "offline"],
-    "on_unavailable": "block",
-    "max_feed_age_seconds": 3600
+    "on_unavailable": "allow"
   }
 }
 ```
+
+On deployments that restrict URLhaus to Monitor (see [Availability](url-reputation.md#availability)), a URLhaus rule records would-block findings and never blocks — a fail-closed `on_unavailable: "block"` included.
 
 ## Freshness and the failure policy
 
@@ -123,7 +125,7 @@ yet, or because only part of the message could be examined. In every one of
 those cases `on_unavailable` decides:
 
 * `allow` — the message continues and the failure is recorded in the request log. This is the default, and it is the right choice for most deployments.
-* `block` — the rule blocks on the failed check. The log says `fail-closed`, and **it is never reported as found malware**: a blocked-on-failure request is not a detection.
+* `block` — the rule blocks on the failed check. The log says `fail-closed`, and **it is never reported as found malware**: a blocked-on-failure request is not a detection. Under Monitor — the policy's, the rule's own, or a source restricted to Monitor — the failed check is recorded as would-block and the message continues.
 
 {% hint style="warning" %}
 `on_unavailable: "block"` means an expired or unavailable feed blocks every
@@ -148,8 +150,8 @@ The rule runs wherever you point it with `direction`:
 
 On a streamed response a URL cannot be judged before it is complete, and
 nothing can be un-sent once the client has it. So on the proxy and native
-streaming paths a policy that contains a URL reputation rule is delivered
-**buffered**: CollieAi accumulates the response, checks it, then replays it.
+streaming paths a policy that contains a URL reputation rule on output
+(`direction` `outbound` or `all`) is delivered **buffered**: CollieAi accumulates the response, checks it, then replays it.
 That costs time-to-first-token.
 
 **Monitor mode suppresses the enforcement, not the buffering.** A Monitor rule
@@ -181,7 +183,8 @@ observation — see that page):
 | no match (coverage partial)    | the check ran, but not every URL in the message could be examined     |
 | check unavailable — *reason*   | the check could not run; the reason is named                          |
 | fail-closed: block on failure  | your `on_unavailable: "block"` turned that failed check into a block  |
-| nothing to check               | the message contained no supported URL                                |
+| fail-open: allowed, degraded   | the check could not run and your `on_unavailable: "allow"` let the message continue |
+| no URLs in the text / every URL excluded by the rule | nothing to check: the message had no supported URL, or the rule excludes every one it had |
 | reused verdict                 | the answer came from the cache of an identical, recent request        |
 
 The evidence is the FEED's data — an IOC id, a type, a confidence, a malware
@@ -217,5 +220,23 @@ URL reputation is enabled per deployment. If the rule type is not available in
 your project, or a rule reports that the feed is not served, contact support —
 the feeds are imported by the CollieAi deployment, not by your project.
 
-URLhaus data is published by abuse.ch under its own terms; depending on your
-deployment, rules that use it may be restricted to Monitor.
+A deployment may restrict a feed to Monitor. On CollieAi's hosted service
+URLhaus is restricted this way today. You can still create a URLhaus rule in
+Enforce, and it is stored exactly as you wrote it; at evaluation it is applied
+as Monitor: a hit, and a fail-closed `on_unavailable: "block"`, are recorded as
+would-block, and the message continues. The rule list marks such a rule
+**Monitor-only**, and the rule test reports
+`no_enforce_reason: "source_monitor_only"`. When the restriction is lifted,
+the same rule enforces with no change on your side.
+
+### In Starter Monitor
+
+New accounts get both feeds in the **Starter Monitor** policy that
+[Get Started](../../getting-started/quick-start.md) creates: **Malicious URLs
+(ThreatFox)** and **Malicious URLs (URLhaus)**, each with `direction: "all"`,
+`decision: "block"`, `on_unavailable: "allow"` and every other field at its
+default: for ThreatFox, all three IOC types at confidence 90 or higher, with
+compromised domains left out; for URLhaus, every URL status; for both, a
+24-hour maximum feed age. Starter Monitor runs in Monitor mode, so both rules record findings and
+block nothing until you switch the policy to Enforce. A deployment where the
+rule type is not available creates Starter Monitor without them.
