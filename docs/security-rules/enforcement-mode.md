@@ -107,7 +107,7 @@ Use the Analytics and Logs pages, or query the API for rule stats.
 Once you are satisfied with the rule behavior, switch the policy to enforce mode:
 
 ```bash
-curl -X PUT https://your-instance.example.com/api/v1/policies/{policy_id} \
+curl -X PATCH https://your-instance.example.com/api/v1/policies/{policy_id} \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -124,18 +124,17 @@ All rules with `inherit` mode will immediately begin enforcing their decisions.
 When adding new rules to an enforcing policy, set individual rules to monitor mode while keeping the policy in enforce:
 
 ```bash
-curl -X POST https://your-instance.example.com/api/v1/rules \
+curl -X POST https://your-instance.example.com/api/v1/policies/{policy_id}/rules \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "New Prompt Injection Rule",
     "rule_type": "lightweight_model",
-    "policy_id": "POLICY_ID",
     "direction": "inbound",
     "decision": "block",
     "enforcement_mode": "monitor",
     "config": {
-      "model_id": "sentinel_v2",
+      "model_id": "qualifire/prompt-injection-jailbreak-sentinel-v2",
       "threshold": 0.80
     }
   }'
@@ -144,7 +143,7 @@ curl -X POST https://your-instance.example.com/api/v1/rules \
 This rule evaluates every input message and reports triggers, but does not block anything. Once validated, update the rule to `inherit` or `enforce` to activate it:
 
 ```bash
-curl -X PUT https://your-instance.example.com/api/v1/rules/{rule_id} \
+curl -X PATCH https://your-instance.example.com/api/v1/policies/{policy_id}/rules/{rule_id} \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -171,7 +170,7 @@ curl -X POST https://your-instance.example.com/api/v1/policies \
 ### Switch a Policy from Monitor to Enforce
 
 ```bash
-curl -X PUT https://your-instance.example.com/api/v1/policies/{policy_id} \
+curl -X PATCH https://your-instance.example.com/api/v1/policies/{policy_id} \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -182,18 +181,17 @@ curl -X PUT https://your-instance.example.com/api/v1/policies/{policy_id} \
 ### Create a Rule with Monitor Mode
 
 ```bash
-curl -X POST https://your-instance.example.com/api/v1/rules \
+curl -X POST https://your-instance.example.com/api/v1/policies/{policy_id}/rules \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "experimental-injection-detector",
     "rule_type": "lightweight_model",
-    "policy_id": "POLICY_ID",
     "direction": "inbound",
     "decision": "block",
     "enforcement_mode": "monitor",
     "config": {
-      "model_id": "sentinel_v2",
+      "model_id": "qualifire/prompt-injection-jailbreak-sentinel-v2",
       "threshold": 0.70
     }
   }'

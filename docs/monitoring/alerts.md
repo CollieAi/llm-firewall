@@ -110,7 +110,7 @@ Marks a single alert event as read.
 ### Get unread count
 
 ```http
-GET /api/v1/alerts/projects/{project_id}/events/unread-count
+GET /api/v1/alerts/projects/{project_id}/unread-count
 ```
 
 Returns the number of unacknowledged alert events. Useful for displaying a badge in your own UI or for polling.

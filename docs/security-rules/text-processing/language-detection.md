@@ -485,6 +485,8 @@ Downstream `lightweight_model` rules can then use the `languages` configuration 
   "name": "English Prompt Guard",
   "rule_type": "lightweight_model",
   "order": 20,
+  "direction": "inbound",
+  "decision": "block",
   "config": {
     "model_id": "deepset/deberta-v3-base-injection",
     "languages": ["en"],
