@@ -10,8 +10,9 @@ icon: plug
 
 {% hint style="warning" %}
 **Preview, Monitor only.** The guardrail observes: it never blocks or changes
-a call. Its behaviour and settings may still change. It runs only the
-project's dictionary rules, see [Your project's policy](#your-projects-policy).
+a call. Its behaviour and settings may still change. Rule support is decided
+by CollieAi's server execution profile, see
+[Your project's policy](#your-projects-policy).
 The route is on at app.collieai.io; a self-hosted CollieAi turns it on itself,
 see [Self-hosted CollieAi](#self-hosted-collieai).
 {% endhint %}
@@ -36,39 +37,46 @@ at most 5 s more.
 * Python 3.11 or later in the proxy's environment. The package needs only
   `httpx`, which LiteLLM already has.
 * A CollieAi project for the guardrail, with an [API key](../getting-started/api-keys.md)
-  (`clai_…`), and a policy for it that holds only dictionary rules. A new
-  project starts with Starter Monitor, which doesn't qualify, see below.
+  (`clai_…`), and a policy whose rule configurations are admitted by the
+  server profile, see below.
 
 ## Your project's policy
 
-The guardrail runs two of CollieAi's rule types:
-[dictionary matching](../security-rules/detecting-pii/dictionary-matching.md)
-(`aho_corasick`) and [normalization](../security-rules/text-processing/normalization.md).
-Each phase runs the policy's rules for its direction: Input rules for
-pre-call, Output rules for post-call. If one of them is outside what the
-guardrail runs, the phase is refused as a whole. The call goes on unchanged,
-and the phase counts as a bypass with the reason `capability`. That happens
-with:
+On `app.collieai.io`, the `stage1a-monitor-all-v1` server profile runs every
+message rule selected for the phase: Input rules for pre-call and Output
+rules for post-call. The adapter has no list of rule types. Rules still run
+only in Monitor, so a finding is reported but never changes the model request
+or response.
 
-* a rule of any other type: regex, structured IDs, URL rules, LLM detection
-  and so on;
+The server admits the complete selected policy before the first detector. If
+one configuration is unsafe for synchronous execution or needs input the
+adapter does not send, the phase is refused as a whole. The call goes on
+unchanged, and the phase counts as a bypass with the reason `capability`.
+Examples include:
+
+* an unbounded regex such as nested or variable repetition;
 * more than 16 rules for one direction, or more than 8 dictionary rules;
 * a dictionary rule on a dictionary group, a dictionary over 256 KiB, or a
   match mode other than `substring` with `whole_word` on;
-* a normalization rule with `trim_punctuation`.
+* a normalization rule with `trim_punctuation`;
+* inbound LLM conversation checking, because this adapter does not send a
+  complete CollieAi conversation context.
+
+Self-hosted servers still using `stage1a-narrow-v1` or
+`stage1a-wide-v1` accept only
+[dictionary matching](../security-rules/detecting-pii/dictionary-matching.md)
+and [normalization](../security-rules/text-processing/normalization.md). The
+server's `profile` diagnostic tells you which profile answered.
 
 CollieAi's Logs show such a check with the error `capability:<what>`, for
 example `capability:rule_type`.
 
-**Set the policy up before you connect the proxy.** A new project starts with
-the [Starter Monitor](../getting-started/quick-start.md) policy, which has
-rules of other types, so a new project alone still gives `bypass:capability`:
+**Set the policy up before you connect the proxy.** Confirm that every rule's
+configuration is admitted by the server profile:
 
-1. Give the guardrail's project a [policy](../projects-and-policies/policies.md)
-   that holds only `aho_corasick` rules and normalization rules without
-   `trim_punctuation`, within the limits above. Create one, or delete or
-   disable every other Input and Output rule in a policy no other project
-   uses.
+1. Keep the [policy](../projects-and-policies/policies.md) within the limits
+   above. On a rollback server, use only `aho_corasick` and normalization
+   without `trim_punctuation`.
 2. After you install the guardrail, send a test request through the proxy.
    Both phases must show `completed`, see [Check that it works](#check-that-it-works).
    `bypass:capability` means a rule is still outside what the guardrail runs.
@@ -165,7 +173,8 @@ without content.
 
 ## Limits
 
-* **Dictionary rules only**, see [Your project's policy](#your-projects-policy).
+* **Only configurations admitted by the server profile**, see
+  [Your project's policy](#your-projects-policy).
 * **A phase holds at most 32 texts, 4,096 characters each and 16,384 in
   all.** Pre-call sends the text of every message, the history included, so a
   long conversation is a bypass `limit`.
@@ -183,9 +192,13 @@ check then logs `bypass:not_found`. To turn it on, set
 `LITELLM_GUARDRAIL_ENABLED=true` and point `api_base` at your deployment's
 `/v1/integrations/litellm`.
 
-The deployment runs the narrow profile above. With
-`LITELLM_GUARDRAIL_PROFILE=stage1a-wide-v1` a phase takes 64 texts and 131,072
-characters; set the guardrail's `max_body_bytes: 3211264` to match.
+The default is the narrow rollback profile above. Set
+`LITELLM_GUARDRAIL_PROFILE=stage1a-monitor-all-v1` to run every commonly
+admitted message rule with the narrow text limits. This profile requires the
+target-host gate documented with CollieAi's deployment. The rollback profile
+`stage1a-wide-v1` accepts the same two rule types as narrow but raises a phase
+to 64 texts and 131,072 characters; set the guardrail's
+`max_body_bytes: 3211264` to match.
 
 ## Turning it off
 
