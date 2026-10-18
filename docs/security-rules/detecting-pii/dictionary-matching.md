@@ -134,8 +134,6 @@ Authorization: Bearer {auth_token}
 
 Pre-configured dictionaries available to all users. System groups include: Profanity, Hate Speech, CSAM, Prompt Injection, Brand Safety, Violence, Weapons, Drugs, Extremism, Self-Harm, Code Secrets, and unordered/soft variants -- each with dictionaries in 23 languages.
 
-Legacy standalone system dictionaries (Profanity Filter, PII Keywords) are also available for backward compatibility.
-
 System dictionaries are **read-only** and cannot be modified or deleted.
 
 ### User Dictionaries
@@ -165,11 +163,11 @@ Authorization: Bearer {auth_token}
   "dictionaries": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Profanity Filter",
-      "description": "Common profanity and offensive words",
+      "name": "Content Safety (EN)",
+      "description": "Content Safety dictionary for en",
       "dictionary_type": "system",
       "owner_id": null,
-      "word_count": 15,
+      "word_count": 4077,
       "case_sensitive": false,
       "is_active": true,
       "version": 1,
@@ -343,17 +341,17 @@ Authorization: Bearer {auth_token}
 
 {% stepper %}
 {% step %}
-### Profanity Filter (Mask)
+### Content Safety (Mask)
 
 ```json
 {
-  "name": "Profanity Filter",
+  "name": "Content Safety",
   "rule_type": "aho_corasick",
   "order": 10,
   "direction": "all",
   "decision": "mask",
   "config": {
-    "dictionary_id": "{profanity-dictionary-id}",
+    "dictionary_group_id": "{content-safety-group-id}",
     "replacement": "[FILTERED]",
     "whole_word": true
   }
@@ -362,20 +360,20 @@ Authorization: Bearer {auth_token}
 {% endstep %}
 
 {% step %}
-### PII Keyword Detection (Block)
+### Your Own Terms (Block)
 
 ```json
 {
-  "name": "Block PII Keywords",
+  "name": "Block Internal Project Names",
   "rule_type": "aho_corasick",
   "order": 5,
   "direction": "inbound",
   "decision": "block",
   "config": {
-    "dictionary_id": "{pii-keywords-dictionary-id}",
+    "dictionary_id": "{your-dictionary-id}",
     "whole_word": true
   },
-  "block_message": "Message contains sensitive information keywords"
+  "block_message": "Message mentions an internal project"
 }
 ```
 {% endstep %}

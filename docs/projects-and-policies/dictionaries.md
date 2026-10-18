@@ -46,12 +46,9 @@ curl https://app.collieai.io/api/v1/dictionary-groups \
 
 ## System dictionaries
 
-CollieAi also includes **legacy standalone system dictionaries** for backward compatibility:
-
-| Dictionary           | Description                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Profanity Filter** | Common profanity and offensive terms.                                                                            |
-| **PII Keywords**     | Terms that indicate the presence of personal data (e.g., "social security", "date of birth", "passport number"). |
+The system dictionaries are the per-language members of the groups above.
+The two former standalone dictionaries, "Profanity Filter" and "PII Keywords",
+were removed in release 2026.10.19; one still used by a rule was kept.
 
 System dictionaries are **read-only** -- you cannot edit or delete them.
 
