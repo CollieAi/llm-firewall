@@ -34,6 +34,10 @@
 * [Node SDK](sdks/node-sdk.md)
 * [.NET SDK](sdks/dotnet-sdk.md)
 
+## Integrations
+
+* [LiteLLM guardrail](integrations/litellm.md)
+
 ## Projects & Policies
 
 * [Projects and policies overview](projects-and-policies/overview.md)
