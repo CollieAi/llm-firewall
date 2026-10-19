@@ -76,8 +76,9 @@ A field that belongs to the other source is refused, even when it is `false`.
 ### Addresses without http(s)://
 
 {% hint style="info" %}
-**Preview.** This check arrives with the next release of the hosted service.
-Until your deployment runs it, the rule checks explicit `http(s)` links only.
+**Available** on the hosted service since 19 October 2026 (release
+2026.10.19.2). A self-hosted deployment checks these addresses from that
+release on; an older one checks explicit `http(s)` links only.
 {% endhint %}
 
 A model can print a feed's domain without the scheme, and many chat
