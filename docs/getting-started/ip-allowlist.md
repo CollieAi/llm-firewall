@@ -14,6 +14,7 @@ This is useful for enterprise environments where API access should be limited to
 ## How does the IP allowlist work?
 
 * The allowlist is **per account** -- it applies to all your projects and API keys.
+* Only the account owner changes it; [team members](team-members.md) see it read-only.
 * An **empty allowlist** (default) means all IPs are allowed.
 * A **populated allowlist** means only listed IPs can make API requests.
 * The check runs before rate limiting and filtering, so blocked IPs do not consume quota.
