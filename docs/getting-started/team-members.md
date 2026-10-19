@@ -62,6 +62,17 @@ until someone signs in with that address, then as **Active**. The address must
 be the one they sign in with — it is compared without regard to letter case,
 but `jane.doe@` and `janedoe@` are different addresses.
 
+A colleague who has no CollieAi sign-in yet does not need a Google account:
+
+* the email has a link to choose a name and a password — it works for
+  7 days, and opens your account right away;
+* or, if their address is a Google account, they click **Sign in with Google**
+  on that page or on the sign-in page.
+
+A colleague who already signs in to CollieAi (with their own account) simply
+finds yours in the account menu. If an invitation link has expired, remove the
+member and add them again — a new email goes out.
+
 To change a role, pick another one next to the member. To remove someone,
 click the bin icon and confirm.
 
@@ -81,3 +92,8 @@ account.
 Each person keeps their own password, sign-in and support tickets. Setting a
 password, signing out and writing to support work the same in any account and
 in any role.
+
+Forgot your password? **Forgot password?** on the sign-in page emails a link
+to the address you sign in with. It works once, for one hour. A colleague who
+joined by an invitation link keeps their password: it may be their only way to
+sign in, so it can be changed but not removed.
