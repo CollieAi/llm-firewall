@@ -83,10 +83,20 @@ configuration is admitted by the server profile:
 
 ## Install and configure
 
-Install the package into the proxy's Python environment, or its image:
+Install the package into the proxy's Python environment:
 
 ```bash
 pip install collieai-litellm-guardrail
+```
+
+The official LiteLLM Docker image (`ghcr.io/berriai/litellm`) has no `pip` in
+its environment, so `RUN pip install …` fails with `pip: not found`. Bootstrap
+it first in your image:
+
+```dockerfile
+FROM ghcr.io/berriai/litellm:v1.102.4
+RUN python3 -m ensurepip \
+ && python3 -m pip install --no-cache-dir collieai-litellm-guardrail
 ```
 
 Add the guardrail to the proxy's `config.yaml`:
