@@ -33,7 +33,7 @@ the feed?** — and it answers it locally, without ever visiting the URL.
 
 ## How it works
 
-1. Every explicit `http://` or `https://` URL in the text is extracted with its exact position.
+1. Every explicit `http://` or `https://` URL in the text is extracted with its exact position. Addresses written without a scheme are extracted too (see *Addresses without http(s)://* below).
 2. Each one is canonicalized into a comparable identity: host lowercased, IDN converted to A-labels, the default port for the scheme dropped, the fragment dropped. The path and query are preserved — case, `;params`, `//`, dot segments and existing `%` escapes are all kept as they are, and non-ASCII characters are percent-encoded as UTF-8.
 3. The identity is looked up in the feed snapshot the deployment currently serves.
 4. A hit blocks the message. A miss lets it through. A check that could not run applies your `on_unavailable` policy.
@@ -47,9 +47,9 @@ This list is deliberate, and it is the difference between a reputation feed
 and a scanner:
 
 * No classification of unknown URLs — if the address is not in the feed, the rule says nothing about it.
-* No bare domains (`evil.test`), no `www.`-without-scheme, no defanged forms (`hxxp://`, `evil[.]test`).
+* No defanged forms (`hxxp://`, `evil[.]com`) — text written that way is deliberately not clickable.
 * No DNS resolution, no URL visiting, no redirect or shortener unwinding, no file scanning.
-* No subdomain inheritance: a feed entry for `evil.test` does not block `login.evil.test`.
+* No subdomain inheritance: a feed entry for `evil.com` does not block `login.evil.com`. The one exception is `www.`: `www.evil.com` is also looked up as `evil.com`.
 * One feed per rule — two feeds means two rules.
 * Message traffic only — the rule does not apply to MCP tool calls (`mcp` targeting is refused).
 
@@ -64,6 +64,7 @@ and a scanner:
 | `max_feed_age_seconds`        | integer          | `86400`             | How old the served feed may be before this rule treats it as unusable. Between `900` and `86400`.                  |
 | `excluded_domains`            | array of strings | none                | Exact hosts this rule never flags. No wildcards, no subdomain inheritance.                                         |
 | `excluded_urls`               | array of strings | none                | Exact URLs this rule never flags.                                                                                  |
+| `schemeless_hosts`            | boolean          | `true`              | Also check addresses written without `http(s)://` in the message, and look a `www.` host up as its domain. `false` checks explicit `http(s)` links only. |
 | `ioc_types`                   | array of strings | all three           | **ThreatFox only.** Any of `url`, `domain`, `ip:port`.                                                              |
 | `min_confidence`              | integer          | `90`                | **ThreatFox only.** Ignore feed entries below this confidence (0–100).                                             |
 | `include_compromised_domains` | boolean          | `false`             | **ThreatFox only.** Also match domains the feed marks as compromised — legitimate sites currently serving malware. |
@@ -71,6 +72,39 @@ and a scanner:
 
 A field that belongs to the other source is refused, even when it is `false`.
 `excluded_domains` and `excluded_urls` share one budget of 100 entries.
+
+### Addresses without http(s)://
+
+{% hint style="info" %}
+**Preview.** This check arrives with the next release of the hosted service.
+Until your deployment runs it, the rule checks explicit `http(s)` links only.
+{% endhint %}
+
+A model can print a feed's domain without the scheme, and many chat
+interfaces still make it clickable. With `schemeless_hosts` on (the default)
+the rule also checks, in the message:
+
+| Written as | Looked up as |
+| --- | --- |
+| `www.evil.com/x` | the URL with `http://` and with `https://`, the host, and the domain `evil.com` |
+| `evil.com/x`, `evil.com`, `evil.com:8443` | the URL with `http://` and with `https://`, and the host — when the last label is a real top-level domain |
+| `192.0.2.10:8080/x` | the URL with `http://` and with `https://`, and `192.0.2.10:8080` |
+| `192.0.2.10/x` | the URL with `http://` and with `https://`, and `192.0.2.10:80` / `:443` |
+
+What is **not** treated as an address: an email (`user@evil.com`, `evil.com+tag@corp.com`), an address with a broken port (`evil.com:abc/x`), a path
+(`src/evil.com`, `C:\tmp\main.py`), text inside an explicit link
+(`https://good.com/?r=evil.com`), a bare IP with neither port nor path, IPv6
+without a scheme, a non-ASCII host without a scheme, and defanged forms
+(`hxxp://`, `[.]evil.com`, `evil[.]com`).
+
+These addresses only ever **add** a match. If the feed cannot be read, a text
+that has only addresses without a scheme is skipped — never blocked, even
+with `on_unavailable: "block"`; explicit `http(s)` links keep the failure
+policy. A message is checked for at most 256 different addresses without a
+scheme: `www.` hosts and IP addresses first, then other hosts. File names
+(`main.py`, `README.md`) look like hosts too and are simply looked up and not
+found. They are checked in the message only, not inside
+[context analysis](#context-analysis) documents.
 
 ### ThreatFox example
 
@@ -137,7 +171,7 @@ worse than a blocked conversation, and watch the feed's freshness.
 
 Exclusions are exact values, not patterns:
 
-* `excluded_domains` holds exact HOSTS (`cdn.partner.example`). An entry suppresses every match for that host, of any IOC type. Subdomains are not covered — list them separately.
+* `excluded_domains` holds exact HOSTS (`cdn.partner.example`). An entry suppresses every match for that host, of any IOC type. Subdomains are not covered — list them separately — except `www.`: with `schemeless_hosts` on, an excluded `partner.example` also exempts `www.partner.example`.
 * `excluded_urls` holds complete `http(s)` URLs, and an entry suppresses that one URL. A URL may contain a comma or a literal `*` — those are ordinary characters in a path or query, and they are matched as typed.
 * Refused: a wildcard (`*.partner.example`), a URL in the domain list, a bare host in the URL list, and any value containing an ASCII space, tab or control character. The host is canonicalized the same way as a URL's host, so an IDN may be written either way.
 
@@ -186,6 +220,8 @@ observation — see that page):
 | fail-closed: block on failure  | your `on_unavailable: "block"` turned that failed check into a block  |
 | fail-open: allowed, degraded   | the check could not run and your `on_unavailable: "allow"` let the message continue |
 | no URLs in the text / every URL excluded by the rule | nothing to check: the message had no supported URL, or the rule excludes every one it had |
+| *N* addresses without a scheme not checked | no `http(s)` link, and the feed could not be read for the addresses written without a scheme — the message was allowed |
+| *a/b* without a scheme checked | how many addresses without a scheme were looked up, how many were left out, whether more were over the limit, and which form matched |
 | reused verdict                 | the answer came from the cache of an identical, recent request        |
 
 The evidence is the FEED's data — an IOC id, a type, a confidence, a malware
