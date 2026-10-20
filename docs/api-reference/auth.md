@@ -1,8 +1,8 @@
 ---
 description: >-
-  CollieAi authentication API reference — endpoints for email/password and
-  Google OAuth login, password management, session info, IP allowlist, and
-  logout.
+  CollieAi authentication API reference — endpoints for email/password login
+  with the emailed sign-in code, Google OAuth login, password management,
+  session info, IP allowlist, and logout.
 icon: fingerprint
 ---
 
@@ -28,16 +28,19 @@ Returns HTML login page.
 
 ## POST /auth/email/login
 
-Authenticate with email and password. Sets a session cookie on success.
+Authenticate with email and password. On `app.collieai.io` a correct password
+opens no session yet: CollieAi emails a 6-digit code and the sign-in finishes
+with [POST /auth/email/code](#post-auth-email-code). A deployment with the
+sign-in code turned off sets the session cookie here.
 
 **URL:** `https://app.collieai.io/auth/email/login`
 
 **Auth:** None
 
-**Rate Limits:**
+**Rate Limits** (failed attempts):
 
-* 10 requests per minute per IP address
-* 5 requests per minute per email address
+* 10 per minute per IP address
+* 5 per minute per email address
 
 ### Request Body
 
@@ -51,10 +54,75 @@ Authenticate with email and password. Sets a session cookie on success.
 ```bash
 curl -X POST https://app.collieai.io/auth/email/login \
   -H "Content-Type: application/json" \
-  -c cookies.txt \
   -d '{
     "email": "user@example.com",
     "password": "your_password"
+  }'
+```
+
+### Response — `200 OK`, code required
+
+```json
+{
+  "code_required": true,
+  "challenge": "k3Vq9wX1pZ7tR2mN8bL5cH4dF6gJ0sYe"
+}
+```
+
+The code goes to the user's email. Pass `challenge` with the code to
+`POST /auth/email/code`.
+
+### Response — `200 OK`, signed in
+
+Where the sign-in code is turned off:
+
+```json
+{
+  "message": "Login successful",
+  "redirect": "/app/"
+}
+```
+
+Sets the `auth_token` session cookie (7 days).
+
+### Error Responses
+
+| Status | Description                                                         |
+| ------ | ------------------------------------------------------------------- |
+| `401`  | Invalid email or password                                           |
+| `422`  | Validation error                                                    |
+| `429`  | Rate limit exceeded, or 10 sign-in codes this hour for this account |
+
+***
+
+## POST /auth/email/code
+
+Finish a password sign-in with the code from the email. Sets the session
+cookie.
+
+**URL:** `https://app.collieai.io/auth/email/code`
+
+**Auth:** None
+
+A code works for 10 minutes, once. Five wrong codes end the sign-in: start
+again with `POST /auth/email/login`.
+
+### Request Body
+
+| Field       | Type   | Required | Description                                   |
+| ----------- | ------ | -------- | --------------------------------------------- |
+| `challenge` | string | Yes      | `challenge` from `POST /auth/email/login`     |
+| `code`      | string | Yes      | The 6-digit code from the email               |
+
+### Example Request
+
+```bash
+curl -X POST https://app.collieai.io/auth/email/code \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{
+    "challenge": "k3Vq9wX1pZ7tR2mN8bL5cH4dF6gJ0sYe",
+    "code": "123456"
   }'
 ```
 
@@ -62,21 +130,58 @@ curl -X POST https://app.collieai.io/auth/email/login \
 
 ```json
 {
-  "user_id": "usr_abc123",
-  "email": "user@example.com",
-  "role": "user"
+  "message": "Login successful",
+  "redirect": "/app/"
 }
 ```
 
-Sets `auth_token` session cookie in response headers.
+Sets the `auth_token` session cookie (7 days).
 
 ### Error Responses
 
-| Status | Description               |
-| ------ | ------------------------- |
-| `401`  | Invalid email or password |
-| `422`  | Validation error          |
-| `429`  | Rate limit exceeded       |
+| Status | `error.code`         | Description                                                    |
+| ------ | -------------------- | -------------------------------------------------------------- |
+| `400`  | `wrong_code`         | Wrong code; the message says how many attempts are left        |
+| `400`  | `too_many_attempts`  | Fifth wrong code; the sign-in is over, log in again            |
+| `400`  | `code_expired`       | The code expired or was already used; log in again             |
+| `404`  | —                    | The sign-in code is turned off on this deployment              |
+| `429`  | —                    | More than 20 requests per minute from one IP address           |
+
+***
+
+## POST /auth/email/code/resend
+
+Email a new code for the same sign-in. The previous code stops working.
+
+**URL:** `https://app.collieai.io/auth/email/code/resend`
+
+**Auth:** None
+
+Once a minute, up to five codes per sign-in, and at most 10 codes per hour
+for one account (first codes and new ones together). A new code works for
+10 minutes.
+
+### Request Body
+
+| Field       | Type   | Required | Description                               |
+| ----------- | ------ | -------- | ----------------------------------------- |
+| `challenge` | string | Yes      | `challenge` from `POST /auth/email/login` |
+
+### Response — `200 OK`
+
+```json
+{
+  "message": "We sent a new code."
+}
+```
+
+### Error Responses
+
+| Status | Description                                                            |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | The sign-in expired (`error.code` = `code_expired`); log in again      |
+| `404`  | The sign-in code is turned off on this deployment                      |
+| `429`  | Less than a minute since the last code, five codes already sent for this sign-in, or 10 codes this hour for the account |
 
 ***
 
