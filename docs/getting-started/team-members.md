@@ -7,13 +7,6 @@ icon: users
 
 # Team members
 
-{% hint style="warning" %}
-**Not enabled on the hosted service yet.** Team members is built and is
-switched on with a coming release of `app.collieai.io`. Until then
-**Settings** shows no **Team** section. This page describes how it works once
-it is on.
-{% endhint %}
-
 Team members let colleagues work in your CollieAi account with their own
 sign-in, so nobody shares a login and password. You decide for each person
 whether they may change things (**Editor**) or only look (**Viewer**), and you
@@ -91,7 +84,8 @@ account.
 
 Each person keeps their own password, sign-in and support tickets. Setting a
 password, signing out and writing to support work the same in any account and
-in any role.
+in any role. A password sign-in asks for a code sent to the person's own
+email, see [Authentication](authentication.md#sign-in-code).
 
 Forgot your password? **Forgot password?** on the sign-in page emails a link
 to the address you sign in with. It works once, for one hour. A colleague who

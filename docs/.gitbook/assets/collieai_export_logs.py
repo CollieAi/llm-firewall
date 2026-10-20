@@ -10,8 +10,17 @@ Usage:
         [filters...]
 
 The password is read from the COLLIEAI_PASSWORD environment variable
-(or prompted interactively). Output is NDJSON (one log row per line)
-or CSV with --format csv.
+(or prompted interactively). When the service asks for the 6-digit code
+it emails at sign-in, the script prompts for it, so that sign-in needs a
+terminal. Output is NDJSON (one log row per line) or CSV with
+--format csv.
+
+    --session-file <path>     reuse the session saved in this file and
+                              skip the sign-in; after a sign-in, save the
+                              session there (mode 0600). A session lasts
+                              7 days and gives full access to the
+                              dashboard account: keep the file like a
+                              password.
 
 Filters (all optional, combine freely):
     --date-from / --date-to   ISO timestamp (2026-08-12T00:00:00Z)
@@ -88,30 +97,92 @@ REPEATABLE = {
 }
 
 
-def _http_error(prefix: str, e: "urllib.error.HTTPError") -> SystemExit:
+def _error_body(e: "urllib.error.HTTPError"):
     try:
-        detail = json.loads(e.read().decode())
+        return json.loads(e.read().decode())
     except Exception:
-        detail = e.reason
+        return e.reason
+
+
+def _http_error(prefix: str, e: "urllib.error.HTTPError", detail=None) -> SystemExit:
+    if detail is None:
+        detail = _error_body(e)
     return SystemExit(f"{prefix}: HTTP {e.code} — {detail}")
 
 
-def login(base_url: str, email: str, password: str) -> str:
-    """POST /auth/email/login; return the auth_token cookie value."""
+def _post_json(url: str, payload: dict):
+    """POST a JSON body; return (parsed body, auth_token cookie or None).
+    An HTTP error status raises urllib.error.HTTPError."""
     req = urllib.request.Request(
-        f"{base_url}/auth/email/login",
-        data=json.dumps({"email": email, "password": password}).encode(),
+        url,
+        data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
+    with urllib.request.urlopen(req) as resp:
+        token = None
+        for header, value in resp.headers.items():
+            if header.lower() == "set-cookie" and "auth_token=" in value:
+                token = value.split("auth_token=", 1)[1].split(";", 1)[0]
+        return json.load(resp), token
+
+
+def login(base_url: str, email: str, password: str) -> str:
+    """POST /auth/email/login, then POST /auth/email/code with the emailed
+    code when the service asks for one; return the auth_token cookie value."""
     try:
-        with urllib.request.urlopen(req) as resp:
-            for header, value in resp.headers.items():
-                if header.lower() == "set-cookie" and "auth_token=" in value:
-                    return value.split("auth_token=", 1)[1].split(";", 1)[0]
+        body, token = _post_json(f"{base_url}/auth/email/login",
+                                 {"email": email, "password": password})
     except urllib.error.HTTPError as e:
         raise _http_error("login failed", e) from None
-    raise SystemExit("login succeeded but no auth_token cookie was set")
+    if not token and body.get("code_required"):
+        if not sys.stdin.isatty():
+            raise SystemExit(
+                f"this sign-in needs the code CollieAi emailed to {email}: "
+                f"run the script in a terminal (with --session-file it "
+                f"saves the session for 7 days)")
+        while True:
+            code = input(f"Code from the email sent to {email}: ").strip()
+            try:
+                body, token = _post_json(
+                    f"{base_url}/auth/email/code",
+                    {"challenge": body["challenge"], "code": code})
+                break
+            except urllib.error.HTTPError as e:
+                detail = _error_body(e)
+                error = detail.get("error", {}) if isinstance(detail, dict) else {}
+                if e.code == 400 and error.get("code") == "wrong_code":
+                    # "Wrong code. N attempts left." — five in all.
+                    print(error.get("message", "Wrong code."), file=sys.stderr)
+                    continue
+                raise _http_error("sign-in code failed", e, detail) from None
+    if not token:
+        raise SystemExit("login succeeded but no auth_token cookie was set")
+    return token
+
+
+def session_works(base_url: str, token: str) -> bool:
+    """True while the saved session still signs in (GET /auth/me)."""
+    req = urllib.request.Request(
+        f"{base_url}/auth/me", headers={"Cookie": f"auth_token={token}"})
+    try:
+        with urllib.request.urlopen(req):
+            return True
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            return False
+        raise _http_error("session check failed", e) from None
+
+
+def save_session(path: str, token: str) -> None:
+    """Write the session to `path` with mode 0600, replacing it atomically."""
+    target = os.path.abspath(path)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(target) or ".",
+                               prefix=".collieai-session-", suffix=".tmp")
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(token)
+    os.replace(tmp, target)
 
 
 def fetch_page(base_url, token, params):
@@ -154,6 +225,9 @@ def main() -> None:
     ap.add_argument("--tokens-min", type=int)
     ap.add_argument("--tokens-max", type=int)
     ap.add_argument("--conversation-id")
+    ap.add_argument("--session-file",
+                    help="reuse the session saved here; save it after a "
+                         "sign-in (0600, lasts 7 days)")
     args = ap.parse_args()
 
     if not 1 <= args.page_size <= 1000:
@@ -199,11 +273,28 @@ def main() -> None:
         if value is not None:
             base_params[name] = value
 
-    # Prompt for the password only after every argument validated —
-    # a rejected flag must not first block on an interactive prompt.
-    password = os.environ.get("COLLIEAI_PASSWORD") or getpass.getpass(
-        f"CollieAi password for {args.email}: ")
-    token = login(args.base_url, args.email, password)
+    token = None
+    if args.session_file and os.path.exists(args.session_file):
+        with open(args.session_file) as f:
+            token = f.read().strip() or None
+        if token and not session_works(args.base_url, token):
+            if not sys.stdin.isatty():
+                # A scheduled run must not sign in: each attempt would
+                # email a code, and ten an hour lock the password sign-in.
+                raise SystemExit(
+                    f"the session in {args.session_file} has expired: run "
+                    f"the script once in a terminal to sign in again")
+            print("the saved session has expired; signing in again",
+                  file=sys.stderr)
+            token = None
+    if token is None:
+        # Prompt for the password only after every argument validated —
+        # a rejected flag must not first block on an interactive prompt.
+        password = os.environ.get("COLLIEAI_PASSWORD") or getpass.getpass(
+            f"CollieAi password for {args.email}: ")
+        token = login(args.base_url, args.email, password)
+        if args.session_file:
+            save_session(args.session_file, token)
 
     tmp_path = None
     if args.out == "-":

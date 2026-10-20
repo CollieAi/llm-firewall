@@ -32,6 +32,24 @@ Passwords must meet all of the following:
 * At least one **lowercase** letter
 * At least one **digit**
 
+### Sign-in code
+
+After a correct password, CollieAi emails a 6-digit code to your address and
+signs you in only when you enter it. The code is also in the email's subject,
+so a notification on your phone or lock screen is enough to read it.
+
+* A code works for **10 minutes**, once.
+* Five wrong codes end the sign-in: enter your password again for a new code.
+* **Send a new code** works once a minute, up to five codes for one sign-in.
+* At most **10 codes per hour** for one account. After that, signing in with a
+  password waits until the hour is up; **Sign in with Google** still works.
+
+Signing in with Google asks for no code: your Google account's own two-step
+verification protects that sign-in.
+
+Forgot your password? **Forgot password?** on the sign-in page emails a link
+to set a new one. It works once, for one hour.
+
 ### How are sign-in attempts rate-limited?
 
 To protect against brute-force attacks, sign-in attempts are rate-limited:
@@ -54,8 +72,8 @@ Session cookies are:
 
 #### How do sessions work?
 
-1. You sign in (Google or email/password).
-2. The server creates a session and returns a cookie.
+1. You sign in (Google, or email/password and the emailed code).
+2. The server creates a session and returns a cookie. A session lasts 7 days.
 3. Your browser sends the cookie automatically with every request.
 4. When you sign out, the session is invalidated.
 
@@ -75,5 +93,5 @@ For details on API key authentication, see [API Keys](api-keys.md).
 | Context       | Method           | Details                                       |
 | ------------- | ---------------- | --------------------------------------------- |
 | Web dashboard | Google OAuth     | Auto-registration on first login              |
-| Web dashboard | Email + password | Optional; set in Settings after Google signup |
+| Web dashboard | Email + password | Optional; set in Settings after Google signup. A code sent to your email completes each sign-in |
 | API requests  | `clai_` API key  | Bearer token; scoped to a single project      |

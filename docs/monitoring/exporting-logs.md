@@ -13,7 +13,8 @@ The dashboard's Logs page is backed by an HTTP API you can call directly to expo
 {% hint style="info" %}
 **Key points**
 
-* Exports use your **dashboard account** (email + password), not a `clai_*` API key — the Logs API is scoped to the projects your account owns.
+* Exports use your **dashboard account** (email + password, then the 6-digit code CollieAi emails you), not a `clai_*` API key — the Logs API is scoped to the projects your account owns.
+* A session lasts 7 days. The script can save it, so a scheduled export needs a person to enter a code once a week.
 * Filters compose: values within one dimension are OR'd, different dimensions are AND'd, and any dimension can be flipped to *exclude* mode.
 * Pagination freezes a **snapshot** against newer rows, and the included script runs a count-drift diagnostic that catches most page-shift incidents loudly. Exporting a closed time window fully in the past reduces the residual risk further — see the pagination note for what is and isn't guaranteed.
 * A ready-to-run export script (Python, no dependencies) is included below.
@@ -21,7 +22,8 @@ The dashboard's Logs page is backed by an HTTP API you can call directly to expo
 
 ## Authentication
 
-Log in once and reuse the session cookie:
+Signing in takes two requests: the password, then the code CollieAi emails to
+your address.
 
 ```
 POST https://app.collieai.io/auth/email/login
@@ -30,9 +32,26 @@ Content-Type: application/json
 {"email": "you@example.com", "password": "..."}
 ```
 
-The response sets an `auth_token` cookie. Send it on every subsequent request: `Cookie: auth_token=<value>`. Login is rate-limited (5 attempts per minute per email), so authenticate once per export run, not once per page.
+The response names the sign-in, and the code goes to your email:
+
+```json
+{"code_required": true, "challenge": "k3Vq9wX1pZ7tR2mN8bL5cH4dF6gJ0sYe"}
+```
+
+```
+POST https://app.collieai.io/auth/email/code
+Content-Type: application/json
+
+{"challenge": "k3Vq9wX1pZ7tR2mN8bL5cH4dF6gJ0sYe", "code": "123456"}
+```
+
+This response sets an `auth_token` cookie. Send it on every subsequent request: `Cookie: auth_token=<value>`. The session lasts 7 days, so sign in once per export run, not once per page — or save the cookie and reuse it for the week. The cookie gives full access to your dashboard account: keep it like a password.
+
+The code works for 10 minutes; five wrong codes end the sign-in. An account gets at most 10 codes per hour, and wrong passwords are limited to 5 per minute per email. See [Authentication](../getting-started/authentication.md#sign-in-code) and the [Auth API](../api-reference/auth.md#post-auth-email-code).
 
 {% hint style="warning" %}
+Because the code arrives by email, a job without a person cannot sign in on its own. Sign in once in a terminal and reuse the session (the script's `--session-file`), and renew it within 7 days.
+
 If your account uses Google Sign-In only, set a password first (account settings) — the programmatic login endpoint authenticates by email and password.
 {% endhint %}
 
@@ -77,7 +96,7 @@ Exporting a closed historical window (`date_from`/`date_to` fully in the past, o
 
 ## Export script
 
-A self-contained script (Python 3.8+, standard library only) that logs in, applies your filters, paginates with the snapshot freeze, and writes NDJSON or CSV:
+A self-contained script (Python 3.8+, standard library only) that logs in, asks for the emailed code, applies your filters, paginates with the snapshot freeze, and writes NDJSON or CSV:
 
 {% file src="../.gitbook/assets/collieai_export_logs.py" %}
 
@@ -98,6 +117,20 @@ python3 collieai_export_logs.py \
   --email you@example.com --project-id <PROJECT_ID> \
   --source playground --exclude source \
   --search "invoice" --out logs.ndjson
+```
+
+The script asks for the code from the email in the terminal. To run exports on a schedule, sign in once by hand with `--session-file`: the script saves the session there (readable only by you) and the scheduled runs reuse it with no password or code. When the session expires after 7 days, a run without a terminal stops with an error before signing in; run the script by hand once to renew it.
+
+```bash
+# Once, in a terminal: enter the code, the session is saved
+python3 collieai_export_logs.py \
+  --email you@example.com --project-id <PROJECT_ID> \
+  --session-file ~/.collieai-session --date-from 2026-10-01 --out logs.ndjson
+
+# Scheduled runs within the next 7 days: no password, no code
+python3 collieai_export_logs.py \
+  --email you@example.com --project-id <PROJECT_ID> \
+  --session-file ~/.collieai-session --date-from 2026-10-01 --out logs.ndjson
 ```
 
 The script prints the matched total and the snapshot timestamp to stderr, then streams rows into a temp file that atomically replaces `--out` only on a clean finish — a failed export never truncates an existing archive. (The atomicity applies to file outputs; with `--out -` rows stream straight to stdout and a failed run may have emitted a partial export.) Defaults chosen for archival use: `--collapse-streams false` (every chunk row), output files end up with `0600` permissions, and CSV cells that begin with `=`, `+`, `-`, or `@` are neutralized with a leading quote so spreadsheets don't execute them as formulas (`--raw-csv` disables this).
