@@ -21,8 +21,9 @@ The guardrail is a Python package, `collieai-litellm-guardrail`, that you
 install into your [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy).
 LiteLLM calls it before the model call (pre-call) and after it (post-call).
 For each phase of an eligible call it sends the call's text to CollieAi, which
-runs your project's policy in Monitor and answers what Enforce would have
-done. The answer goes into LiteLLM's guardrail log and CollieAi's Logs.
+runs your project's policy in Monitor and answers what it found and what
+Enforce would have done. The answer goes into LiteLLM's guardrail log and
+CollieAi's Logs.
 
 The call itself goes on unchanged, whatever the answer and whatever fails.
 Each phase waits at most its own deadline, 2.5 s by default, so a call waits
@@ -42,7 +43,7 @@ at most 5 s more.
 
 ## Your project's policy
 
-On `app.collieai.io`, the `stage1a-monitor-all-v1` server profile runs every
+On `app.collieai.io`, the `stage1a-monitor-all-v2` server profile runs every
 message rule selected for the phase: Input rules for pre-call and Output
 rules for post-call. The adapter has no list of rule types. Rules still run
 only in Monitor, so a finding is reported but never changes the model request
@@ -56,20 +57,31 @@ Examples include:
 
 * an unbounded regex such as nested or variable repetition;
 * more than 16 rules for one direction, or more than 8 dictionary rules;
-* a dictionary rule on a dictionary group, a dictionary over 256 KiB, or a
-  match mode other than `substring` with `whole_word` on;
+* a dictionary rule on a dictionary group other than CollieAi's own
+  `prompt-security`, the one the Starter policy uses (`aho_group_content`),
+  or one that would match more than two of its languages
+  (`aho_group_languages`);
+* a dictionary over 256 KiB, or a match mode other than `substring` with
+  `whole_word` on;
 * a normalization rule with `trim_punctuation`;
 * inbound LLM conversation checking, because this adapter does not send a
   complete CollieAi conversation context.
 
-Self-hosted servers still using `stage1a-narrow-v1` or
-`stage1a-wide-v1` accept only
+A rule that does not apply to a text, such as a URL check of a text without
+URLs or a model rule on a text shorter than its minimum length, is not
+counted as a rule that failed to run.
+
+The previous profile, `stage1a-monitor-all-v1`, admits no dictionary group,
+so it refuses the Starter policy's `prompt-security` rule. Self-hosted
+servers still using `stage1a-narrow-v1` or `stage1a-wide-v1` accept only
 [dictionary matching](../security-rules/detecting-pii/dictionary-matching.md)
 and [normalization](../security-rules/text-processing/normalization.md). The
 server's `profile` diagnostic tells you which profile answered.
 
-CollieAi's Logs show such a check with the error `capability:<what>`, for
-example `capability:rule_type`.
+The guardrail's WARNING names what was refused and the rule, for example
+`detail=aho_group_content, rule_id=…` (guardrail 0.2.0 and later). CollieAi's
+Logs show such a check with the error `capability:<what>`, for example
+`capability:rule_type`.
 
 **Set the policy up before you connect the proxy.** Confirm that every rule's
 configuration is admitted by the server profile:
@@ -139,9 +151,11 @@ own machine.
 
 1. **Within 3 s of start**, each proxy worker runs a synthetic check through
    the same key and deadline. If it fails, a WARNING names why:
-   `bypass:auth` for a wrong key, `bypass:capability` for a policy rule the
-   guardrail doesn't run, `bypass:not_found` when the route is off,
-   `bypass:transport` when CollieAi can't be reached.
+   `bypass:auth` for a wrong key, `bypass:capability` with the code and the
+   rule for a policy rule the guardrail doesn't run, `bypass:not_found` when
+   the route is off, `bypass:transport` when CollieAi can't be reached. Each
+   line ends with `(guardrail <name>)`, the `guardrail_name` from your
+   `config.yaml`.
 2. **Within a minute**, each worker writes a `collieai guardrail summary` line
    with its counts. No line means the guardrail is not loaded.
 3. **Send a test request** through the proxy. The next summary must show
@@ -151,22 +165,52 @@ own machine.
 
 ## What you see
 
+CollieAi names what each finding is:
+
+* `detection`: a rule found what it looks for. This is a violation, whether
+  the policy is in Monitor or Enforce;
+* `allow`: a rule with the `allow` action matched;
+* `operational_failure`: a detector failed. The finding records that; it is
+  no violation.
+
 **In LiteLLM's guardrail log**, each phase adds a record with
-`guardrail_provider: collieai`:
+`guardrail_provider: collieai`. With guardrail 0.2.0 and later:
 
 | `guardrail_status` | When |
 |---|---|
-| `success` | The check found nothing |
-| `guardrail_flagged` | The check found something Enforce would mask or block. The call still went through unchanged |
-| `guardrail_failed_to_respond` | Bypass: no check, with its reason |
+| `guardrail_flagged` | The check found a `detection`, also when some rule did not run. The call still went through unchanged |
+| `guardrail_failed_to_respond` | No `detection`, and some rule did not run: no full answer. Or a bypass: no check, with its reason |
+| `success` | No `detection`, and every rule that applies ran |
 | `not_run` | The call is outside what the guardrail checks |
 
-A completed check carries what Enforce would have done, the rule IDs and
-types, and the evaluation ID. The record never carries the call's text.
+Guardrail 0.1.0 flags only what Enforce would mask or block: a card number
+found under a Monitor policy is `success` there.
 
-**In CollieAi's [Logs](../monitoring/logs.md)**, each check is a row with the
-event type `litellm_guardrail_evaluated`. Its request ID is the evaluation ID
-from LiteLLM's log. The row stores no text of the call.
+Two fields of the record say what was found, and LiteLLM keeps them even
+where its spend logs hide the guardrail's response
+(`store_prompts_in_spend_logs: false`, LiteLLM's default):
+
+| Field | A completed check | A bypass, or a call not checked |
+|---|---|---|
+| `guardrail_action` | `"NONE"`: the guardrail never acts on a call | `null` |
+| `violation_categories` | The rule types that found something, for example `["aho_corasick", "structured_id"]`; `null` when nothing was found | `null` |
+
+A category is a [rule type](../api-reference/rules.md): `aho_corasick`,
+`base64_payload`, `language_detection`, `lightweight_model`, `llm_detection`,
+`normalization`, `qwen3guard_stream`, `regex`, `structured_id`, `url_filter`
+or `url_reputation`, or `other`. Rule names are never sent.
+
+The guardrail's response in the record carries what Enforce would have done,
+each finding's rule ID, type and kind, the rules that did not apply to the
+text, and the evaluation ID. It never carries the call's text.
+
+**In CollieAi's [Logs](../monitoring/logs.md)**, each check is a row with
+Source **LiteLLM** and the event type `litellm_guardrail_evaluated`. A check
+that found a `detection` is under **Monitoring**. Its request ID is the
+evaluation ID from LiteLLM's log. Open the row to see each finding with its
+rule and kind, the rules that did not run, and the LiteLLM call ID, from
+`metadata.litellm_call_id` in LiteLLM's record; **All rows of this call**
+shows both phases. The row stores no text of the call.
 
 Each phase is one request,
 `POST /v1/integrations/litellm/beta/litellm_basic_guardrail_api`, authorized
@@ -203,9 +247,10 @@ check then logs `bypass:not_found`. To turn it on, set
 `/v1/integrations/litellm`.
 
 The default is the narrow rollback profile above. Set
-`LITELLM_GUARDRAIL_PROFILE=stage1a-monitor-all-v1` to run every commonly
-admitted message rule with the narrow text limits. This profile requires the
-target-host gate documented with CollieAi's deployment. The rollback profile
+`LITELLM_GUARDRAIL_PROFILE=stage1a-monitor-all-v2`, the profile
+app.collieai.io runs, to run every commonly admitted message rule with the
+narrow text limits; `stage1a-monitor-all-v1` is its previous version. Both
+require the target-host gate documented with CollieAi's deployment. The rollback profile
 `stage1a-wide-v1` accepts the same two rule types as narrow but raises a phase
 to 64 texts and 131,072 characters; set the guardrail's
 `max_body_bytes: 3211264` to match.
