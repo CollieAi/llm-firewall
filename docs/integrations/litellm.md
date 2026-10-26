@@ -31,8 +31,8 @@ at most 5 s more.
 
 ## Before you start
 
-* A LiteLLM proxy. The guardrail is tested with **LiteLLM 1.102.4**. Use
-  1.102.2 or later: 1.102.0 and 1.102.1 carry the critical advisory
+* A LiteLLM proxy. The guardrail is tested with **LiteLLM 1.102.4 and
+  1.106.4**. Use 1.102.2 or later: 1.102.0 and 1.102.1 carry the critical advisory
   [GHSA-7hp6-4w63-5g45](https://github.com/advisories/GHSA-7hp6-4w63-5g45).
   Other LiteLLM versions are untested.
 * Python 3.11 or later in the proxy's environment. The package needs only
