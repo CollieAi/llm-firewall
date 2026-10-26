@@ -50,6 +50,8 @@ API keys are prefixed with `clai_` and scoped to a single project. See [API Keys
 
 Session cookies are set automatically when you sign in to the dashboard. No manual header is needed for browser-based requests.
 
+A request that changes something with the session cookie must come from the dashboard itself: sent from another site's page, it is refused with `403` and `"code": "cross_origin_request"`. Scripts that send no `Origin` header, and requests with an API key, are not affected.
+
 ## Error Format
 
 All errors follow an OpenAI-compatible shape:

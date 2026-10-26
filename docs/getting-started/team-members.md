@@ -51,7 +51,7 @@ only once, to whoever creates them, and provider tokens are always masked.
 3. Click **Add**.
 
 CollieAi emails them that they have access. The member shows as **Pending**
-until someone signs in with that address, then as **Active**. The address must
+until they sign in after being added, then as **Active**. The address must
 be the one they sign in with — it is compared without regard to letter case,
 but `jane.doe@` and `janedoe@` are different addresses.
 
@@ -64,7 +64,13 @@ A colleague who has no CollieAi sign-in yet does not need a Google account:
 
 A colleague who already signs in to CollieAi (with their own account) simply
 finds yours in the account menu. If an invitation link has expired, remove the
-member and add them again — a new email goes out.
+member and add them again — a new email goes out. A link stops working for
+good once its member is removed, even if the same address is added again.
+
+An account can add up to **30 members a day**, and one address can be added
+at most **5 times a day** across all accounts, so the invitation email cannot
+be used to flood an address. Only an add that sends an email counts: adding
+someone who is already a member, or a 21st member, does not.
 
 To change a role, pick another one next to the member. To remove someone,
 click the bin icon and confirm.
@@ -87,7 +93,9 @@ password, signing out and writing to support work the same in any account and
 in any role. A password sign-in asks for a code sent to the person's own
 email, see [Authentication](authentication.md#sign-in-code).
 
-Forgot your password? **Forgot password?** on the sign-in page emails a link
-to the address you sign in with. It works once, for one hour. A colleague who
+Forgot your password? For a colleague who joined by an invitation link,
+**Forgot password?** on the sign-in page emails a link to the address they
+sign in with. It works once, for one hour. Someone who signs in with Google
+signs in with Google and changes the password in **Settings**. A colleague who
 joined by an invitation link keeps their password: it may be their only way to
 sign in, so it can be changed but not removed.
