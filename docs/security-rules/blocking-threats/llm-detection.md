@@ -18,7 +18,7 @@ The LLM Detection rule uses language models to decide what a user's message to y
 
 The rule fires on injection and on misuse. What happens then — block, mask, or only a record under Monitor — is the rule's decision and your policy's enforcement mode, as for any rule.
 
-On a deployment that runs **LLM Detection v2**, the rule works in **two phases**. Phase 1 sorts each message into one of 25 categories in a single short step — except empty messages and your integration's placeholders, which pass without any model call. Phase 2 reads the conversation and decides; it runs only on the messages phase 1 sends on — those that may be an attack or off-purpose use, those phase 1 cannot place, and the messages of a conversation flagged by an earlier detection. Elsewhere the rule runs the **single check**, the rule as it was before v2: a model call with a `safe` / `injection` answer for each message of at least `min_length` characters, and optionally a conversation-aware check (see [The single check](#the-single-check)).
+On a deployment that runs **LLM Detection v2**, the rule works in **two phases**. Phase 1 sorts each message into one of 25 categories in a single short step — except empty messages and your integration's placeholders, which pass without any model call. Phase 2 reads the conversation and decides; it runs only on the messages phase 1 sends on — those that may be an attack or off-purpose use, those phase 1 cannot place, and the messages of a conversation flagged by an earlier detection. Elsewhere the rule runs the **single check**, the rule as it was before v2: a model call with a `safe` / `injection` answer for each non-empty message of at least `min_length` characters, and optionally a conversation-aware check (see [The single check](#the-single-check)).
 
 The dashboard does not show or offer models: the deployment provides them. A rule saved without `model_id` gets one from the server. Through the API, `model_id` can still name one of the deployment's allowed models for the single check; the two phases ignore it.
 
@@ -278,24 +278,26 @@ The deployment also has operating settings under `cascade` — `route_threshold`
 
 ## The single check
 
-The single check is one model call with a `safe` / `injection` answer for each message of at least `min_length` characters; shorter messages pass without one. It runs where the two phases do not (see [Where do the two phases run?](#where-do-the-two-phases-run)), and everywhere on a deployment without them. It never answers `misuse`. On Input it can add a conversation-aware check: the [conversation check](#conversation-check-stage-2).
+The single check is one model call with a `safe` / `injection` answer for each non-empty message of at least `min_length` characters; empty and shorter messages pass without one. It runs where the two phases do not (see [Where do the two phases run?](#where-do-the-two-phases-run)), and everywhere on a deployment without them. It never answers `misuse`. On Input it can add a conversation-aware check: the [conversation check](#conversation-check-stage-2).
 
 ### Processing Flow
 
 ```
 1. Message received
    ↓
-2. Length check (skip if < min_length)
+2. Empty check (skip an empty or whitespace-only message)
    ↓
-3. Format prompt with system_prompt + user_template
+3. Length check (skip if < min_length)
    ↓
-4. Run the model
+4. Format prompt with system_prompt + user_template
    ↓
-5. Parse the answer
+5. Run the model
    ↓
-6. Compare confidence against threshold
+6. Parse the answer
    ↓
-7. Return match/no-match with metadata
+7. Compare confidence against threshold
+   ↓
+8. Return match/no-match with metadata
 ```
 
 ### Threshold Guidelines
@@ -392,13 +394,16 @@ left blank, the built-in CONTEXT-DATA MODE prompt is used.
 
 Where the single check runs on Input — on a deployment without the two phases, or on a rule with `cascade.enabled: false` — the rule can ask the model a second time, with the conversation. In those two cases the dashboard shows it as **Conversation check (stage 2)** in the rule's settings, except on a rule for Output only. Where the two phases run, it never runs: phase 2 replaces it. It will be retired once the two phases run everywhere.
 
-When it is on (`conversation_check.enabled: true`), the single check is stage 1, and stage 2 checks the message together with the previous messages of the conversation:
+When it is on (`conversation_check.enabled: true`), the single check is stage 1, and stage 2 checks the message together with the previous messages of the conversation. Stage 2 is wanted for a message of at least `min_length` characters when stage 1 answers `injection` or the conversation is flagged by an earlier detection, and for a shorter one when the conversation is flagged (`trigger_on_short_when_flagged`, on by default). It runs only if the conversation has earlier messages it can read:
 
-| When | Model calls |
-| --- | --- |
-| Stage 1 answers `injection`, or the conversation is flagged by an earlier detection | Stage 1, then stage 2 |
-| A message shorter than `min_length` arrives in a flagged conversation (`trigger_on_short_when_flagged`, on by default) | Stage 2 only — stage 1 skips short messages |
-| The conversation has no earlier messages stage 2 can read | Stage 1 only — its answer stands |
+| Message | Earlier messages stage 2 can read | Model calls |
+| --- | --- | --- |
+| At least `min_length` characters, stage 2 wanted | yes | Stage 1, then stage 2 |
+| At least `min_length` characters, stage 2 wanted | no | Stage 1 only — its answer stands |
+| Shorter than `min_length`, in a flagged conversation | yes | Stage 2 only — stage 1 skips short messages |
+| Shorter than `min_length`, in a flagged conversation | no | None — the message passes |
+
+Every other message is the single check alone. An empty message never reaches either stage.
 
 Stage 2 needs the job's `conversation_id`. When both stages run, both finish before the result is returned.
 
@@ -458,7 +463,7 @@ Order 4: Other rules...
 
 * **Phase 1** runs on every message that is not empty or a placeholder: one short step, typically around 0.1 s.
 * **Phase 2** runs only on the messages phase 1 sends on and reads the conversation: typically 0.5–1 s for those messages.
-* **The single check**: one model call for each message of at least `min_length` characters; the [conversation check](#conversation-check-stage-2) can add one.
+* **The single check**: one model call for each non-empty message of at least `min_length` characters; the [conversation check](#conversation-check-stage-2) can add one.
 
 ## Troubleshooting
 
