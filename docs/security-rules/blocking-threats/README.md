@@ -29,9 +29,9 @@ Lightweight ML classifier that scores messages for prompt injection and jailbrea
 
 #### [LLM Detection](llm-detection.md)
 
-Generative LLM-based detection that provides structured JSON output with reasoning. Better at catching novel attacks and explaining why a message was flagged.
+LLM-based detection of prompt injection and off-purpose use. Where LLM Detection v2 runs, a quick phase sorts every message into one of 25 categories, and a careful check reads the conversation for the messages in malicious ones. You choose which categories are safe.
 
-**Use for:** High-accuracy detection, novel attack patterns, audit trails requiring explainability.
+**Use for:** High-accuracy detection, novel attack patterns, attacks across a conversation, keeping an assistant to its purpose.
 
 #### [URL Filtering](url-filtering.md)
 

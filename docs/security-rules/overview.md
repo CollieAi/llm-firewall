@@ -92,7 +92,7 @@ Prevent malicious or unwanted content from reaching the model or your users.
 | Type                                                         | Description                                                                                                                |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
 | [**Prompt Injection**](blocking-threats/prompt-injection.md) | A lightweight ML classifier that detects prompt injection and jailbreak attempts with a configurable confidence threshold. |
-| [**LLM Detection**](blocking-threats/llm-detection.md)       | Uses a secondary LLM call to analyze messages for sophisticated injection attacks that evade simpler classifiers.          |
+| [**LLM Detection**](blocking-threats/llm-detection.md)       | Uses language models to catch sophisticated injection attacks that evade simpler classifiers, and off-purpose use.          |
 | [**URL Filtering**](blocking-threats/url-filtering.md)       | Inspect URLs in messages. Allow or deny specific schemes, domains, and ports. Block IP literals and encoded patterns.      |
 | [**Base64 Payloads**](blocking-threats/base64-payloads.md)   | Detect base64-encoded content that might hide malicious payloads. Configure minimum length and file signature detection.   |
 | [**Output Safety (Streaming Guard)**](blocking-threats/streaming-guard.md) | Real-time safety classification of streaming model output with Qwen3Guard. Opt-in (enabled per deployment).               |
