@@ -19,15 +19,17 @@ Click **Sign in with Google** on the login page and authorize with your Google a
 
 ## Email and Password
 
-You can register with an email address and password on the sign-up page.
+A new CollieAi account is created with Google. A password is added in one of two ways:
 
-**Already signed in with Google?** You can add a password to your existing account from the **Settings** page. This lets you sign in with either method going forward.
+* **Already signed in with Google?** You can add a password to your existing account from the **Settings** page. This lets you sign in with either method going forward.
+* **Invited to a team?** The invitation link lets you choose a name and a password, see [Team members](team-members.md).
 
 ### What are the password requirements?
 
 Passwords must meet all of the following:
 
-* Between **8** and **72** characters
+* At least **8** characters and at most **72 bytes**: 72 Latin letters, fewer
+  with accented or non-Latin letters
 * At least one **uppercase** letter
 * At least one **lowercase** letter
 * At least one **digit**
@@ -43,12 +45,18 @@ so a notification on your phone or lock screen is enough to read it.
 * **Send a new code** works once a minute, up to five codes for one sign-in.
 * At most **10 codes per hour** for one account. After that, signing in with a
   password waits until the hour is up; **Sign in with Google** still works.
+* Changing or resetting the password ends a sign-in that is still waiting for
+  its code.
 
 Signing in with Google asks for no code: your Google account's own two-step
 verification protects that sign-in.
 
-Forgot your password? **Forgot password?** on the sign-in page emails a link
-to set a new one. It works once, for one hour.
+Forgot your password? If you joined a team by an invitation link, **Forgot
+password?** on the sign-in page emails a link to set a new one. It works once,
+for one hour. If you sign in with Google, sign in with Google and change the
+password in **Settings**: a reset by email is not offered for a Google account,
+because whoever receives your work address after you would receive your
+account with it.
 
 ### How are sign-in attempts rate-limited?
 

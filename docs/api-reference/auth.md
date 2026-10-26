@@ -195,9 +195,10 @@ Set or change the password for the authenticated user. Use this to set an initia
 
 ### Request Body
 
-| Field      | Type   | Required | Description                                                                  |
-| ---------- | ------ | -------- | ---------------------------------------------------------------------------- |
-| `password` | string | Yes      | New password (8-72 characters, must contain uppercase, lowercase, and digit) |
+| Field              | Type   | Required | Description                                                                                                  |
+| ------------------ | ------ | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `password`         | string | Yes      | New password: at least 8 characters, at most 72 bytes; must contain an uppercase letter, a lowercase letter and a digit |
+| `password_confirm` | string | Yes      | The same password again                                                                                      |
 
 ### Example Request
 
@@ -206,7 +207,8 @@ curl -X POST https://app.collieai.io/auth/set-password \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "password": "NewSecure1Password"
+    "password": "NewSecure1Password",
+    "password_confirm": "NewSecure1Password"
   }'
 ```
 
@@ -214,7 +216,7 @@ curl -X POST https://app.collieai.io/auth/set-password \
 
 ```json
 {
-  "message": "Password updated successfully"
+  "message": "Password set successfully"
 }
 ```
 
@@ -223,7 +225,7 @@ curl -X POST https://app.collieai.io/auth/set-password \
 | Status | Description                                                               |
 | ------ | ------------------------------------------------------------------------- |
 | `401`  | Not authenticated                                                         |
-| `422`  | Validation error (password too short, missing required character classes) |
+| `422`  | Validation error (password too short or over 72 bytes, missing required character classes, passwords do not match) |
 
 ***
 
