@@ -18,9 +18,9 @@ The LLM Detection rule uses language models to decide what a user's message to y
 
 The rule fires on injection and on misuse. What happens then — block, mask, or only a record under Monitor — is the rule's decision and your policy's enforcement mode, as for any rule.
 
-On a deployment that runs **LLM Detection v2**, the rule works in **two phases**. Phase 1 sorts every message into one of 25 categories in a single short step. Only messages in a malicious category go on to phase 2, which reads the conversation and decides. Elsewhere the rule runs the **single check**: one model call per message with a `safe` / `injection` answer (see [The single check](#the-single-check)).
+On a deployment that runs **LLM Detection v2**, the rule works in **two phases**. Phase 1 sorts each message into one of 25 categories in a single short step. Phase 2 reads the conversation and decides; it runs only on the messages phase 1 sends on — those that may be an attack or off-purpose use, those phase 1 cannot place, and every message of a conversation flagged by an earlier detection. Elsewhere the rule runs the **single check**, the rule as it was before v2: one model call per message with a `safe` / `injection` answer (see [The single check](#the-single-check)).
 
-Which models run is part of the deployment, not of the rule. The rule does not name them, and the dashboard does not show them.
+You do not choose the models: the deployment provides them, and the dashboard does not show them. A rule created without a model gets one from the server, and the two phases do not use it.
 
 {% hint style="info" %}
 **Status.** The two phases are **available** on `app.collieai.io`. On a dedicated or self-hosted deployment they **need enabling**: the operator turns them on for the whole deployment. Until then every LLM Detection rule runs the single check.
@@ -29,11 +29,12 @@ Which models run is part of the deployment, not of the rule. The rule does not n
 {% hint style="info" %}
 **Key points**
 
-* Phase 1 sorts each message into one of 25 categories. A message in a malicious category, or one phase 1 cannot place, goes to phase 2; the rest pass.
+* Phase 1 sorts each message into one of 25 categories. Phase 2 gets the messages that may be an attack or off-purpose use — an attack or off-purpose category even if you set it to safe, or an ordinary one you set to malicious — those phase 1 cannot place, and every message of a flagged conversation. The rest pass.
+* Empty messages and your integration's placeholders pass without any model call.
 * Phase 2 reads the message with the previous messages of the conversation and answers `safe`, `injection` or `misuse`.
 * You decide, rule by rule, which categories are safe and which are malicious, and you can rewrite the prompts of both phases.
 * After a detection the conversation is flagged for two hours: each of its messages goes to phase 2.
-* The two phases run on the Input of async jobs and the SDKs. Output, context analysis, the proxy routes and LiteLLM run the single check.
+* The two phases run on the Input of async jobs and the SDKs. Output, context analysis, the proxy routes, LiteLLM and MCP run the single check.
 {% endhint %}
 
 ## Ideal Use Cases
@@ -47,16 +48,17 @@ Which models run is part of the deployment, not of the rule. The rule does not n
 
 ### Phase 1 — sorting
 
-Every non-empty message is sorted into one of the 25 categories (see [Categories and your policy](#categories-and-your-policy)). Phase 1 sees only the message, not the conversation.
+Every message that is not empty or a placeholder (see [Placeholders](#placeholders)) is sorted into one of the 25 categories (see [Categories and your policy](#categories-and-your-policy)). Phase 1 sees only the message, not the conversation.
 
-* The message goes to phase 2 when it likely belongs to a malicious category — an attack or off-purpose category, or an ordinary one you set to malicious — or when phase 1's answer is not one of the categories.
-* Otherwise it passes, and phase 2 does not run.
+* The message goes to phase 2 when it likely belongs to an attack or off-purpose category — whatever you set that category to — or to an ordinary category you set to malicious.
+* It also goes to phase 2 when phase 1's answer is not one of the categories, and when the conversation is flagged (see [After a detection](#after-a-detection)).
+* Otherwise it passes, and phase 2 does not run. A message phase 1 files under an ordinary category by mistake is not checked by phase 2.
 
 An answer phase 1 cannot place always goes to phase 2. A custom phase-1 prompt that confuses it therefore costs more messages in phase 2, not missed attacks.
 
 ### Phase 2 — check
 
-Phase 2 reads the message together with the previous messages of the same conversation — up to `history_turns` of them, 6 by default. It answers `safe`, `injection` or `misuse`. It is not told which category phase 1 chose, so a sorting mistake does not carry over.
+Phase 2 reads the message together with the previous messages of the same conversation — up to `history_turns` of them, 6 by default. It answers `safe`, `injection` or `misuse`. It is not told which category phase 1 chose: it judges the message itself.
 
 A job belongs to a conversation through its `conversation_id` (the SDK's `conversation_id` argument, or the `conversation_id` field on `POST /v1/jobs`). A job without one is judged on its own, like the first message of a conversation.
 
@@ -89,6 +91,7 @@ If your integration sends a fixed text instead of an empty message — for examp
 | Output (`direction: outbound`, or the Output side of `direction: all`) | The single check |
 | Context analysis (the `context` fields of a job) | The single check |
 | Proxy routes (`/v1/chat/completions`, `/v1/messages`) and the LiteLLM guardrail | The single check |
+| MCP tool calls | The single check |
 | **Test rule** in the API and the dashboard's Playground | The single check |
 | A rule with `cascade.enabled: false` | The single check |
 
@@ -96,7 +99,7 @@ To see the two phases on a message, send it as a job — under Monitor if you on
 
 ## Categories and your policy
 
-The 25 built-in categories are written for banking, payments and accounting assistants. You cannot add or rename them, but you choose for each one whether it is safe or malicious for this rule.
+The 25 built-in categories are written for banking, payments and accounting assistants. You cannot add or rename them, but you choose for each one whether it is safe or malicious for this rule. The descriptions below are abridged; the full ones are in the built-in phase-1 prompt, shown in the rule's form.
 
 | Group | Category | Default | What it covers |
 | --- | --- | --- | --- |
@@ -147,11 +150,11 @@ The descriptions in the block are always the built-in ones, even if you rewrote 
 **Off-purpose use is malicious by default — also for rules created before LLM Detection v2.** Once the two phases run, a rule that used to stop only injection also stops code unrelated to your product, unrelated topics and help with fraud, without any change to its configuration. If your assistant should allow them, set `coding`, `offtopic` or `crime` to safe.
 {% endhint %}
 
-Every ordinary category you set to malicious sends its messages to phase 2, which is slower than phase 1. On the banking traffic we measured, phase 2 saw about 2 messages in 100 with the default policy, and about 5 in 100 with `account` set to malicious.
+Every ordinary category you set to malicious sends its messages to phase 2, which is slower than phase 1. On the banking traffic we measured, phase 2 saw about 5 in 100 messages with text with the default policy, and about 1 in 10 with `account` set to malicious.
 
 ## Prompts
 
-Each phase has a built-in prompt. In the rule it is stored as `null`, so an improved built-in prompt reaches every rule that kept it. A prompt you write is stored as text; setting it back to empty, or to the built-in text, stores `null` again.
+Each phase has a built-in prompt. In the rule it is stored as `null`, so an improved built-in prompt reaches every rule that kept it. A prompt you write is stored as text. Setting it back to empty stores `null` again; in the dashboard, so does setting it back to the built-in text (**Restore built-in**). Through the API, send `null` to return to the built-in prompt.
 
 * **Phase 1 prompt** (`cascade.router.system_prompt`). You can rewrite the introduction and the descriptions of the categories, but not the set of categories: the prompt must contain each of the 25 categories as a line `category - description`. The rule refuses a prompt that leaves one out and names the missing ones.
 * **Phase 2 prompt** (`cascade.judge.system_prompt`). It must name the three answers `safe`, `injection` and `misuse`. Your category policy is added after it (see above).
@@ -257,25 +260,30 @@ The deployment also has operating settings under `cascade` — `route_threshold`
 | `inference_timeout` | float | `30.0` | Time-out of a model call, in seconds. Phase 2 has its own, shorter one. |
 | `mask_placeholder` | string | `[LLM_INJECTION_DETECTED]` | Replacement text when the rule's decision is `mask` |
 | `max_input_chars` | int | `4000` | Max characters of the message that are checked, 100–16,000 |
-| `max_input_tokens` | int | null | A token limit for the whole request, 512–131,072. When set, it takes priority over `max_input_chars`; a longer message is judged by the part that fits. |
+| `max_input_tokens` | int | null | A token limit for the request of phase 1, the fallback check and the single check, 512–131,072. When set, it takes priority over `max_input_chars`; a longer message is judged by the part that fits. Phase 2 starts from the part phase 1 saw and fits its own request, the conversation included, to its own limit — not to this one. |
 
 ### The single check
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `threshold` | float | `0.70` | Confidence threshold (0.0–1.0) |
-| `min_length` | int | `40` | Skip messages shorter than this. The two phases check every non-empty message. |
+| `min_length` | int | `40` | Skip messages shorter than this. The two phases check every message that is not empty or a placeholder. |
 | `max_new_tokens` | int | `10` | Max tokens to generate (the default prompt outputs a single word) |
 | `temperature` | float | `0.0` | Generation temperature (0 = deterministic) |
 | `system_prompt` | string | null | Custom system prompt (advanced). Combined with the built-in per `system_prompt_mode`. Blank/whitespace is treated as unset. |
 | `context_system_prompt` | string | null | Custom **context-analysis** prompt, used only when this rule classifies a context field (not the prompt). Blank = the built-in "CONTEXT-DATA MODE" prompt. |
 | `system_prompt_mode` | string | `replace` | How `system_prompt` **and** `context_system_prompt` combine with the built-ins: `replace` (override) or `append` (built-in first, then your text). |
 | `user_template` | string | null | Custom user template (must contain `{message}`) |
-| `model_id` | string | set by the server | Leave it out: the server gives the rule the model the deployment serves. |
+| `score_diagnostics` | bool | null | Adds the model's probability of `injection` to the diagnostics. Never changes the decision. |
+| `model_id` | string | set by the server | Leave it out: the server gives the rule the model the deployment serves, and stores it in the rule. The two phases do not use it. |
 
 ## The single check
 
 The single check is one model call per message with a `safe` / `injection` answer. It runs where the two phases do not (see [Where do the two phases run?](#where-do-the-two-phases-run)), and on every message of a deployment without them. It never answers `misuse`.
+
+{% hint style="info" %}
+A rule configured through the API with an earlier conversation-aware step (`conversation_check`) still runs that step after the single check on Input — when the rule is set to `cascade.enabled: false`, or on a deployment without the two phases. The step reads the conversation and is being retired; where the two phases run, it does not.
+{% endhint %}
 
 ### Processing Flow
 
@@ -539,7 +547,7 @@ Abridged — `match_info` carries more diagnostics:
 
 ### Models are the deployment's
 
-A rule cannot choose an arbitrary model: the models are configured on the deployment and checked against its allowlist. Phase 1, phase 2 and the fallback check are not settings of the rule.
+A rule cannot choose an arbitrary model: the models are configured on the deployment and checked against its allowlist. Phase 1, phase 2 and the fallback check are not settings of the rule. The single check's diagnostics (`match_info`) still name its model; that is being removed.
 
 ### Input Truncation
 
@@ -562,7 +570,7 @@ Choose based on your security requirements. When phase 2 fails, the fallback che
 
 **What is LLM-based prompt injection detection?** LLM-based detection in CollieAi uses language models to decide whether a message is an attack on your assistant, an attempt to use it for something it is not for, or an ordinary request. Where LLM Detection v2 runs, a quick sorting phase looks at every message and a careful check reads the conversation for the few that need it.
 
-**Which models does LLM detection use?** The deployment's. The rule does not name a model, and the dashboard does not show one.
+**Which models does LLM detection use?** The deployment's. You do not choose them, and the dashboard does not show them.
 
 **Can I allow something the rule flags by default?** Yes. Set its category to safe — for example `offtopic` for a general-purpose assistant. Its messages still go to phase 2, which is told your product allows them, so an attack wrapped in that topic is still caught.
 
