@@ -18,7 +18,7 @@ The LLM Detection rule uses language models to decide what a user's message to y
 
 The rule fires on injection and on misuse. What happens then — block, mask, or only a record under Monitor — is the rule's decision and your policy's enforcement mode, as for any rule.
 
-On a deployment that runs **LLM Detection v2**, the rule works in **two phases**. Phase 1 sorts each message into one of 25 categories in a single short step. Phase 2 reads the conversation and decides; it runs only on the messages phase 1 sends on — those that may be an attack or off-purpose use, those phase 1 cannot place, and the messages of a conversation flagged by an earlier detection. Empty messages and your integration's placeholders pass without any model call. Elsewhere the rule runs the **single check**, the rule as it was before v2: a model call per message with a `safe` / `injection` answer, and optionally a second, conversation-aware one (see [The single check](#the-single-check)).
+On a deployment that runs **LLM Detection v2**, the rule works in **two phases**. Phase 1 sorts each message into one of 25 categories in a single short step — except empty messages and your integration's placeholders, which pass without any model call. Phase 2 reads the conversation and decides; it runs only on the messages phase 1 sends on — those that may be an attack or off-purpose use, those phase 1 cannot place, and the messages of a conversation flagged by an earlier detection. Elsewhere the rule runs the **single check**, the rule as it was before v2: a model call with a `safe` / `injection` answer for each message of at least `min_length` characters, and optionally a conversation-aware check (see [The single check](#the-single-check)).
 
 The dashboard does not show or offer models: the deployment provides them. A rule saved without `model_id` gets one from the server. Through the API, `model_id` can still name one of the deployment's allowed models for the single check; the two phases ignore it.
 
@@ -29,8 +29,7 @@ The dashboard does not show or offer models: the deployment provides them. A rul
 {% hint style="info" %}
 **Key points**
 
-* Phase 1 sorts each message into one of 25 categories. Phase 2 gets the messages that may be an attack or off-purpose use — an attack or off-purpose category even if you set it to safe, or an ordinary one you set to malicious — those phase 1 cannot place, and the messages of a flagged conversation. The rest pass.
-* Empty messages and your integration's placeholders pass without any model call.
+* Phase 1 sorts each message into one of 25 categories — except empty messages and your integration's placeholders, which pass without any model call. Phase 2 gets the messages that may be an attack or off-purpose use — an attack or off-purpose category even if you set it to safe, or an ordinary one you set to malicious — those phase 1 cannot place, and the messages of a flagged conversation. The rest pass.
 * Phase 2 reads the message with the previous messages of the conversation and answers `safe`, `injection` or `misuse`.
 * You decide, rule by rule, which categories are safe and which are malicious, and you can rewrite the prompts of both phases.
 * After a detection the conversation is flagged, for two hours by default: each of its messages that is not empty or a placeholder goes to phase 2.
@@ -279,7 +278,7 @@ The deployment also has operating settings under `cascade` — `route_threshold`
 
 ## The single check
 
-The single check is a model call per message with a `safe` / `injection` answer. It runs where the two phases do not (see [Where do the two phases run?](#where-do-the-two-phases-run)), and on every message of a deployment without them. It never answers `misuse`. On Input it can add a second, conversation-aware call: the [conversation check](#conversation-check-stage-2).
+The single check is one model call with a `safe` / `injection` answer for each message of at least `min_length` characters; shorter messages pass without one. It runs where the two phases do not (see [Where do the two phases run?](#where-do-the-two-phases-run)), and everywhere on a deployment without them. It never answers `misuse`. On Input it can add a conversation-aware check: the [conversation check](#conversation-check-stage-2).
 
 ### Processing Flow
 
@@ -393,18 +392,20 @@ left blank, the built-in CONTEXT-DATA MODE prompt is used.
 
 Where the single check runs on Input — on a deployment without the two phases, or on a rule with `cascade.enabled: false` — the rule can ask the model a second time, with the conversation. In those two cases the dashboard shows it as **Conversation check (stage 2)** in the rule's settings, except on a rule for Output only. Where the two phases run, it never runs: phase 2 replaces it. It will be retired once the two phases run everywhere.
 
-When it is on (`conversation_check.enabled: true`), the single check is stage 1. Stage 2 checks the same message again, with the previous messages of the conversation, when:
+When it is on (`conversation_check.enabled: true`), the single check is stage 1, and stage 2 checks the message together with the previous messages of the conversation:
 
-* stage 1 answers `injection`;
-* the conversation is flagged by an earlier detection;
-* a message shorter than `min_length` arrives in a flagged conversation (`trigger_on_short_when_flagged`, on by default).
+| When | Model calls |
+| --- | --- |
+| Stage 1 answers `injection`, or the conversation is flagged by an earlier detection | Stage 1, then stage 2 |
+| A message shorter than `min_length` arrives in a flagged conversation (`trigger_on_short_when_flagged`, on by default) | Stage 2 only — stage 1 skips short messages |
+| The conversation has no earlier messages stage 2 can read | Stage 1 only — its answer stands |
 
-Both stages finish before the result is returned, so a message that reaches stage 2 costs a second model call. It needs the job's `conversation_id`.
+Stage 2 needs the job's `conversation_id`. When both stages run, both finish before the result is returned.
 
 | `mode` | What decides |
 | --- | --- |
-| `observe` (default) | Stage 1's answer. Stage 2's answer is only recorded — in Logs as *candidate cleared* or *candidate caught*. |
-| `apply` | Stage 2's answer, when it ran and could be read; otherwise stage 1's. |
+| `observe` (default) | Stage 1's answer. Stage 2's answer is only recorded — in Logs as *candidate cleared* or *candidate caught*. A short message that skipped stage 1 has no answer to apply and passes, as short messages always do. |
+| `apply` | Stage 2's answer, when it ran and could be read; otherwise stage 1's — and a short message that skipped stage 1 passes. |
 
 **Observe is not Monitor.** The policy's Monitor mode applies no decisions at all; `observe` still applies stage 1's decision. A conversation is flagged on the two-stage answer in both modes.
 
@@ -457,7 +458,7 @@ Order 4: Other rules...
 
 * **Phase 1** runs on every message that is not empty or a placeholder: one short step, typically around 0.1 s.
 * **Phase 2** runs only on the messages phase 1 sends on and reads the conversation: typically 0.5–1 s for those messages.
-* **The single check**: one model call per message; a second one when the conversation check runs stage 2.
+* **The single check**: one model call for each message of at least `min_length` characters; the [conversation check](#conversation-check-stage-2) can add one.
 
 ## Troubleshooting
 
@@ -470,7 +471,7 @@ Order 4: Other rules...
 ### Why is latency high?
 
 * Every ordinary category you set to malicious sends its messages to phase 2.
-* A flagged conversation sends each of its messages to phase 2, for two hours by default.
+* A flagged conversation sends its messages to phase 2, except empty ones and placeholders, for two hours by default.
 * Increase `inference_timeout` if time-outs occur.
 
 ### Why was my prompt refused?
@@ -585,12 +586,12 @@ Choose based on your security requirements. When phase 2 fails, the fallback che
 
 ### Frequently asked questions
 
-**What is LLM-based prompt injection detection?** LLM-based detection in CollieAi uses language models to decide whether a message is an attack on your assistant, an attempt to use it for something it is not for, or an ordinary request. Where LLM Detection v2 runs, a quick sorting phase looks at each message with text, and a careful check reads the conversation for the few that need it.
+**What is LLM-based prompt injection detection?** LLM-based detection in CollieAi uses language models to decide whether a message is an attack on your assistant, an attempt to use it for something it is not for, or an ordinary request. Where LLM Detection v2 runs, a quick sorting phase looks at each message except empty ones and your integration's placeholders, and a careful check reads the conversation for the few that need it.
 
 **Which models does LLM detection use?** The deployment's. The dashboard does not offer a choice, and the two phases always use the deployment's models.
 
 **Can I allow something the rule flags by default?** Yes. Set its category to safe — for example `offtopic` for a general-purpose assistant. Its messages still go to phase 2, which is told your product allows them, so an attack wrapped in that topic is still caught.
 
-**How is LLM detection different from the lightweight ML classifier?** The lightweight classifier is a fast BERT-style model (10–50 ms) that scores one message for injection. LLM detection sorts each message into a category, reads the conversation for the suspicious ones, and also detects off-purpose use — at higher latency on those messages.
+**How is LLM detection different from the lightweight ML classifier?** The lightweight classifier is a fast BERT-style model (10–50 ms) that scores one message for injection. LLM detection sorts messages into categories, reads the conversation for the suspicious ones, and also detects off-purpose use — at higher latency on those messages.
 
 **Can I see why a message was flagged?** Yes. In Logs, the request shows the category phase 1 chose, phase 2's answer with its probabilities, and which phase decided.
