@@ -22,9 +22,10 @@ see [Self-hosted CollieAi](#self-hosted-collieai).
 The guardrail is a Python package, `collieai-litellm-guardrail`, that you
 install into your [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy).
 LiteLLM calls it before the model call (pre-call) and after it (post-call).
-For each phase of an eligible call it sends the call's text to CollieAi, which
-runs your project's policy in Monitor and answers what it found and what
-Enforce would have done. The answer goes into LiteLLM's guardrail log and
+For each phase of an eligible call it sends the call's text to CollieAi. In
+Monitor, the default, CollieAi runs your project's policy in Monitor and
+answers what it found and what Enforce would have done; in block mode it runs
+the policy's blocks, see [Blocking (pilot)](#blocking-pilot). The answer goes into LiteLLM's guardrail log and
 CollieAi's Logs.
 
 In Monitor, the default, the call itself goes on unchanged, whatever the
@@ -183,10 +184,11 @@ CollieAi names what each finding is:
 
 | `guardrail_status` | When |
 |---|---|
-| `guardrail_flagged` | The check found a `detection`, also when some rule did not run. The call still went through unchanged |
+| `guardrail_flagged` | The check found a `detection`, also when some rule did not run. The call still went through unchanged; in block mode, a detection that did not block — a mask, a rule left in Monitor |
 | `guardrail_failed_to_respond` | No `detection`, and some rule did not run: no full answer. Or a bypass: no check, with its reason |
 | `success` | No `detection`, and every rule that applies ran |
-| `not_run` | The call is outside what the guardrail checks |
+| `not_run` | The call is outside what the guardrail checks and went through unchanged: in Monitor any such call, in block mode embeddings, rerank and moderation |
+| `guardrail_intervened` | Block mode: the call was refused — a rule blocked it, or it is outside what the guardrail checks |
 
 Guardrail 0.1.0 flags only what Enforce would mask or block: a card number
 found under a Monitor policy is `success` there.
@@ -197,7 +199,7 @@ where its spend logs hide the guardrail's response
 
 | Field | A completed check | A bypass, or a call not checked |
 |---|---|---|
-| `guardrail_action` | `"NONE"`: the guardrail never acts on a call | `null` |
+| `guardrail_action` | `"NONE"` when the call went on; `"BLOCKED"` when block mode refused it | `null`; `"BLOCKED"` when block mode refused the call |
 | `violation_categories` | The rule types that found something, for example `["aho_corasick", "structured_id"]`; `null` when nothing was found | `null` |
 
 A category is a [rule type](../api-reference/rules.md): `aho_corasick`,
@@ -225,10 +227,12 @@ route yourself.
 ## What it checks
 
 It checks foreground, non-streaming Chat Completions text with one choice.
-Any other call is not sent and is counted by reason; in Monitor it passes
-through unchanged, in block mode it is refused before the model: other call types such as Responses or embeddings, streaming, `n > 1`,
-tools, images or other non-text parts, the model's reasoning, and calls
-without content.
+Any other call is not sent and is counted by reason: other call types such as
+Responses or embeddings, streaming, `n > 1`, tools, images or other non-text
+parts, the model's reasoning, and calls without content. In Monitor it passes
+through unchanged. In block mode it is refused before the model — and so is a
+chat call that asks for audio or another output than text — except
+embeddings, rerank and moderation, which pass unchecked.
 
 ## Blocking (pilot)
 
