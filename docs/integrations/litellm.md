@@ -9,8 +9,10 @@ icon: plug
 # LiteLLM guardrail
 
 {% hint style="warning" %}
-**Preview, Monitor only.** The guardrail observes: it never blocks or changes
-a call. Its behaviour and settings may still change. Rule support is decided
+**Preview.** By default the guardrail observes: it never blocks or changes a
+call. A pilot block mode refuses the calls your policy blocks, see
+[Blocking (pilot)](#blocking-pilot). Its behaviour and settings may still
+change. Rule support is decided
 by CollieAi's server execution profile, see
 [Your project's policy](#your-projects-policy).
 The route is on at app.collieai.io; a self-hosted CollieAi turns it on itself,
@@ -20,12 +22,15 @@ see [Self-hosted CollieAi](#self-hosted-collieai).
 The guardrail is a Python package, `collieai-litellm-guardrail`, that you
 install into your [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy).
 LiteLLM calls it before the model call (pre-call) and after it (post-call).
-For each phase of an eligible call it sends the call's text to CollieAi, which
-runs your project's policy in Monitor and answers what it found and what
-Enforce would have done. The answer goes into LiteLLM's guardrail log and
+For each phase of an eligible call it sends the call's text to CollieAi. In
+Monitor, the default, CollieAi runs your project's policy in Monitor and
+answers what it found and what Enforce would have done; in block mode it runs
+the policy's blocks, see [Blocking (pilot)](#blocking-pilot). The answer goes into LiteLLM's guardrail log and
 CollieAi's Logs.
 
-The call itself goes on unchanged, whatever the answer and whatever fails.
+In Monitor, the default, the call itself goes on unchanged, whatever the
+answer and whatever fails; block mode refuses it instead, see
+[Blocking (pilot)](#blocking-pilot).
 Each phase waits at most its own deadline, 2.5 s by default, so a call waits
 at most 5 s more.
 
@@ -45,14 +50,15 @@ at most 5 s more.
 
 On `app.collieai.io`, the `stage1a-monitor-all-v2` server profile runs every
 message rule selected for the phase: Input rules for pre-call and Output
-rules for post-call. The adapter has no list of rule types. Rules still run
-only in Monitor, so a finding is reported but never changes the model request
-or response.
+rules for post-call. The adapter has no list of rule types. In Monitor a
+finding is reported but never changes the model request or response; in block
+mode a rule's block refuses the call, see [Blocking (pilot)](#blocking-pilot).
 
 The server admits the complete selected policy before the first detector. If
 one configuration is unsafe for synchronous execution or needs input the
-adapter does not send, the phase is refused as a whole. The call goes on
-unchanged, and the phase counts as a bypass with the reason `capability`.
+adapter does not send, the phase is refused as a whole. In Monitor the call
+goes on unchanged, and the phase counts as a bypass with the reason
+`capability`; in block mode the call is refused (`503`).
 Examples include:
 
 * an unbounded regex such as nested or variable repetition;
@@ -178,10 +184,11 @@ CollieAi names what each finding is:
 
 | `guardrail_status` | When |
 |---|---|
-| `guardrail_flagged` | The check found a `detection`, also when some rule did not run. The call still went through unchanged |
+| `guardrail_flagged` | The check found a `detection`, also when some rule did not run. The call still went through unchanged; in block mode, a detection that did not block — a mask, a rule left in Monitor |
 | `guardrail_failed_to_respond` | No `detection`, and some rule did not run: no full answer. Or a bypass: no check, with its reason |
 | `success` | No `detection`, and every rule that applies ran |
-| `not_run` | The call is outside what the guardrail checks |
+| `not_run` | The call is outside what the guardrail checks and went through unchanged: in Monitor any such call, in block mode embeddings, rerank and moderation |
+| `guardrail_intervened` | Block mode: the call was refused — a rule blocked it, or it is outside what the guardrail checks |
 
 Guardrail 0.1.0 flags only what Enforce would mask or block: a card number
 found under a Monitor policy is `success` there.
@@ -192,7 +199,7 @@ where its spend logs hide the guardrail's response
 
 | Field | A completed check | A bypass, or a call not checked |
 |---|---|---|
-| `guardrail_action` | `"NONE"`: the guardrail never acts on a call | `null` |
+| `guardrail_action` | `"NONE"` when the call went on; `"BLOCKED"` when block mode refused it | `null`; `"BLOCKED"` when block mode refused the call |
 | `violation_categories` | The rule types that found something, for example `["aho_corasick", "structured_id"]`; `null` when nothing was found | `null` |
 
 A category is a [rule type](../api-reference/rules.md): `aho_corasick`,
@@ -220,10 +227,53 @@ route yourself.
 ## What it checks
 
 It checks foreground, non-streaming Chat Completions text with one choice.
-Any other call passes through unchanged, is not sent, and is counted by
-reason: other call types such as Responses or embeddings, streaming, `n > 1`,
-tools, images or other non-text parts, the model's reasoning, and calls
-without content.
+Any other call is not sent and is counted by reason: other call types such as
+Responses or embeddings, streaming, `n > 1`, tools, images or other non-text
+parts, the model's reasoning, and calls without content. In Monitor it passes
+through unchanged. In block mode it is refused before the model — and so is a
+chat call that asks for audio or another output than text — except
+embeddings, rerank and moderation, which pass unchecked.
+
+## Blocking (pilot)
+
+With `enforcement_mode: block` (guardrail version 0.3.1 or later) the
+guardrail refuses a call instead of only observing it. It is a pilot: use it
+on a test project, not on your users' traffic yet. The proxy's workers do not
+yet refuse traffic while the guardrail is not wired in them, so a worker whose
+guardrail failed to load lets calls through unchecked.
+
+```yaml
+      enforcement_mode: block
+```
+
+It needs `mode: [pre_call, post_call]` and `default_on: true`, or the proxy
+does not start. Your project's active policy must be in **Enforce**; with a
+Monitor policy every check is refused, and so is every call.
+
+| What happens | The client gets | LiteLLM's record |
+|---|---|---|
+| A rule of the policy blocks the request | `400`, `Request blocked by the CollieAi policy (content_blocked)`; the model is not called | `guardrail_intervened`, `guardrail_action: "BLOCKED"`, the rule types in `violation_categories` |
+| A rule blocks the model's reply | `400`, `Response blocked by the CollieAi policy (response_blocked)`; the model's text is not sent | the same |
+| The check could not be made: CollieAi unreachable, the deadline, `busy`, any error | `503`, `CollieAi guardrail unavailable (guardrail_unavailable)` | `guardrail_failed_to_respond`, `"BLOCKED"` |
+| A call outside what the guardrail checks: streaming, tools, more than one choice, non-text input, audio or other non-text output asked of the model, reasoning, Responses, `/v1/messages`, pass-through routes, any other call type | `400`, `… (unsupported_request)` before the model, `(unsupported_response)` after it | `guardrail_intervened`, `"BLOCKED"` |
+| Embeddings, rerank, moderation | passes unchecked | `not_run` |
+| Nothing blocks | the call goes on unchanged | as in Monitor |
+
+The text of a refusal is fixed: it never names a rule or carries your policy's
+block message. CollieAi's Logs show the check as **Blocked**. A call refused as
+outside what the guardrail checks has no categories; its code is in
+`guardrail_response.refusal`.
+
+What does not block:
+
+* **Masks.** A rule whose action is `mask` only observes in this mode; the
+  text is not changed. Its finding says `mask not applied on LiteLLM`. Give
+  the rule `block` if it must stop the call.
+* **A rule left in Monitor** inside the Enforce policy observes.
+* **A detector that failed** follows the rule's own setting: a rule set to
+  block on an error blocks, one set to allow lets the call through.
+
+To go back to observing, set `enforcement_mode: monitor` and reload the proxy.
 
 ## Limits
 
@@ -235,8 +285,8 @@ without content.
 * **The model's reasoning is not checked.** A reply that carries reasoning
   makes post-call a call outside what the guardrail checks.
 * **A burst beyond CollieAi's capacity is a bypass `busy`.** The call goes on
-  unchanged. If the summary shows a lasting `busy` share, tell
-  [CollieAi support](../support/overview.md).
+  unchanged; in block mode it is refused with `503`. If the summary shows a
+  lasting `busy` share, tell [CollieAi support](../support/overview.md).
 * **Counts are per proxy worker**, and they reset when the worker restarts.
 
 ## Self-hosted CollieAi
@@ -254,6 +304,9 @@ require the target-host gate documented with CollieAi's deployment. The rollback
 `stage1a-wide-v1` accepts the same two rule types as narrow but raises a phase
 to 64 texts and 131,072 characters; set the guardrail's
 `max_body_bytes: 3211264` to match.
+
+Block mode needs `LITELLM_GUARDRAIL_ENFORCE_ENABLED=true` on the
+deployment; without it a call in block mode is refused (`503`).
 
 ## Turning it off
 
