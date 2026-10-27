@@ -27,7 +27,9 @@ runs your project's policy in Monitor and answers what it found and what
 Enforce would have done. The answer goes into LiteLLM's guardrail log and
 CollieAi's Logs.
 
-The call itself goes on unchanged, whatever the answer and whatever fails.
+In Monitor, the default, the call itself goes on unchanged, whatever the
+answer and whatever fails; block mode refuses it instead, see
+[Blocking (pilot)](#blocking-pilot).
 Each phase waits at most its own deadline, 2.5 s by default, so a call waits
 at most 5 s more.
 
@@ -47,14 +49,15 @@ at most 5 s more.
 
 On `app.collieai.io`, the `stage1a-monitor-all-v2` server profile runs every
 message rule selected for the phase: Input rules for pre-call and Output
-rules for post-call. The adapter has no list of rule types. Rules still run
-only in Monitor, so a finding is reported but never changes the model request
-or response.
+rules for post-call. The adapter has no list of rule types. In Monitor a
+finding is reported but never changes the model request or response; in block
+mode a rule's block refuses the call, see [Blocking (pilot)](#blocking-pilot).
 
 The server admits the complete selected policy before the first detector. If
 one configuration is unsafe for synchronous execution or needs input the
-adapter does not send, the phase is refused as a whole. The call goes on
-unchanged, and the phase counts as a bypass with the reason `capability`.
+adapter does not send, the phase is refused as a whole. In Monitor the call
+goes on unchanged, and the phase counts as a bypass with the reason
+`capability`; in block mode the call is refused (`503`).
 Examples include:
 
 * an unbounded regex such as nested or variable repetition;
@@ -222,8 +225,8 @@ route yourself.
 ## What it checks
 
 It checks foreground, non-streaming Chat Completions text with one choice.
-Any other call passes through unchanged, is not sent, and is counted by
-reason: other call types such as Responses or embeddings, streaming, `n > 1`,
+Any other call is not sent and is counted by reason; in Monitor it passes
+through unchanged, in block mode it is refused before the model: other call types such as Responses or embeddings, streaming, `n > 1`,
 tools, images or other non-text parts, the model's reasoning, and calls
 without content.
 
@@ -248,12 +251,14 @@ Monitor policy every check is refused, and so is every call.
 | A rule of the policy blocks the request | `400`, `Request blocked by the CollieAi policy (content_blocked)`; the model is not called | `guardrail_intervened`, `guardrail_action: "BLOCKED"`, the rule types in `violation_categories` |
 | A rule blocks the model's reply | `400`, `Response blocked by the CollieAi policy (response_blocked)`; the model's text is not sent | the same |
 | The check could not be made: CollieAi unreachable, the deadline, `busy`, any error | `503`, `CollieAi guardrail unavailable (guardrail_unavailable)` | `guardrail_failed_to_respond`, `"BLOCKED"` |
-| A call outside what the guardrail checks: streaming, tools, more than one choice, non-text input, reasoning, Responses, `/v1/messages`, any other call type | `400`, `… (unsupported_request)` before the model, `(unsupported_response)` after it | `guardrail_intervened`, `"BLOCKED"` |
+| A call outside what the guardrail checks: streaming, tools, more than one choice, non-text input, audio or other non-text output asked of the model, reasoning, Responses, `/v1/messages`, pass-through routes, any other call type | `400`, `… (unsupported_request)` before the model, `(unsupported_response)` after it | `guardrail_intervened`, `"BLOCKED"` |
 | Embeddings, rerank, moderation | passes unchecked | `not_run` |
 | Nothing blocks | the call goes on unchanged | as in Monitor |
 
 The text of a refusal is fixed: it never names a rule or carries your policy's
-block message. CollieAi's Logs show the check as **Blocked**.
+block message. CollieAi's Logs show the check as **Blocked**. A call refused as
+outside what the guardrail checks has no categories; its code is in
+`guardrail_response.refusal`.
 
 What does not block:
 
