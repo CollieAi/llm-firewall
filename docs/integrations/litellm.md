@@ -236,7 +236,7 @@ embeddings, rerank and moderation, which pass unchecked.
 
 ## Blocking (pilot)
 
-With `enforcement_mode: block` (guardrail version 0.3.0 or later) the
+With `enforcement_mode: block` (guardrail version 0.3.1 or later) the
 guardrail refuses a call instead of only observing it. It is a pilot: use it
 on a test project, not on your users' traffic yet. The proxy's workers do not
 yet refuse traffic while the guardrail is not wired in them, so a worker whose
