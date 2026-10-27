@@ -9,8 +9,10 @@ icon: plug
 # LiteLLM guardrail
 
 {% hint style="warning" %}
-**Preview, Monitor only.** The guardrail observes: it never blocks or changes
-a call. Its behaviour and settings may still change. Rule support is decided
+**Preview.** By default the guardrail observes: it never blocks or changes a
+call. A pilot block mode refuses the calls your policy blocks, see
+[Blocking (pilot)](#blocking-pilot). Its behaviour and settings may still
+change. Rule support is decided
 by CollieAi's server execution profile, see
 [Your project's policy](#your-projects-policy).
 The route is on at app.collieai.io; a self-hosted CollieAi turns it on itself,
@@ -225,6 +227,45 @@ reason: other call types such as Responses or embeddings, streaming, `n > 1`,
 tools, images or other non-text parts, the model's reasoning, and calls
 without content.
 
+## Blocking (pilot)
+
+With `enforcement_mode: block` (guardrail version 0.3.0 or later) the
+guardrail refuses a call instead of only observing it. It is a pilot: use it
+on a test project, not on your users' traffic yet. The proxy's workers do not
+yet refuse traffic while the guardrail is not wired in them, so a worker whose
+guardrail failed to load lets calls through unchecked.
+
+```yaml
+      enforcement_mode: block
+```
+
+It needs `mode: [pre_call, post_call]` and `default_on: true`, or the proxy
+does not start. Your project's active policy must be in **Enforce**; with a
+Monitor policy every check is refused, and so is every call.
+
+| What happens | The client gets | LiteLLM's record |
+|---|---|---|
+| A rule of the policy blocks the request | `400`, `Request blocked by the CollieAi policy (content_blocked)`; the model is not called | `guardrail_intervened`, `guardrail_action: "BLOCKED"`, the rule types in `violation_categories` |
+| A rule blocks the model's reply | `400`, `Response blocked by the CollieAi policy (response_blocked)`; the model's text is not sent | the same |
+| The check could not be made: CollieAi unreachable, the deadline, `busy`, any error | `503`, `CollieAi guardrail unavailable (guardrail_unavailable)` | `guardrail_failed_to_respond`, `"BLOCKED"` |
+| A call outside what the guardrail checks: streaming, tools, more than one choice, non-text input, reasoning, Responses, `/v1/messages`, any other call type | `400`, `… (unsupported_request)` before the model, `(unsupported_response)` after it | `guardrail_intervened`, `"BLOCKED"` |
+| Embeddings, rerank, moderation | passes unchecked | `not_run` |
+| Nothing blocks | the call goes on unchanged | as in Monitor |
+
+The text of a refusal is fixed: it never names a rule or carries your policy's
+block message. CollieAi's Logs show the check as **Blocked**.
+
+What does not block:
+
+* **Masks.** A rule whose action is `mask` only observes in this mode; the
+  text is not changed. Its finding says `mask not applied on LiteLLM`. Give
+  the rule `block` if it must stop the call.
+* **A rule left in Monitor** inside the Enforce policy observes.
+* **A detector that failed** follows the rule's own setting: a rule set to
+  block on an error blocks, one set to allow lets the call through.
+
+To go back to observing, set `enforcement_mode: monitor` and reload the proxy.
+
 ## Limits
 
 * **Only configurations admitted by the server profile**, see
@@ -235,8 +276,8 @@ without content.
 * **The model's reasoning is not checked.** A reply that carries reasoning
   makes post-call a call outside what the guardrail checks.
 * **A burst beyond CollieAi's capacity is a bypass `busy`.** The call goes on
-  unchanged. If the summary shows a lasting `busy` share, tell
-  [CollieAi support](../support/overview.md).
+  unchanged; in block mode it is refused with `503`. If the summary shows a
+  lasting `busy` share, tell [CollieAi support](../support/overview.md).
 * **Counts are per proxy worker**, and they reset when the worker restarts.
 
 ## Self-hosted CollieAi
@@ -254,6 +295,9 @@ require the target-host gate documented with CollieAi's deployment. The rollback
 `stage1a-wide-v1` accepts the same two rule types as narrow but raises a phase
 to 64 texts and 131,072 characters; set the guardrail's
 `max_body_bytes: 3211264` to match.
+
+Block mode needs `LITELLM_GUARDRAIL_ENFORCE_ENABLED=true` on the
+deployment; without it a call in block mode is refused (`503`).
 
 ## Turning it off
 
