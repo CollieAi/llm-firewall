@@ -24,9 +24,10 @@ install into your [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy).
 LiteLLM calls it before the model call (pre-call) and after it (post-call).
 For each phase of an eligible call it sends the call's text to CollieAi. In
 Monitor, the default, CollieAi runs your project's policy in Monitor and
-answers what it found and what Enforce would have done; in block mode it runs
-the policy's blocks, see [Blocking (pilot)](#blocking-pilot). The answer goes into LiteLLM's guardrail log and
-CollieAi's Logs.
+answers what it found and what the policy, as it is set, would do: block or
+mask while the policy is in Enforce, nothing while it is in Monitor. In block
+mode it runs the policy's blocks, see [Blocking (pilot)](#blocking-pilot). The
+answer goes into LiteLLM's record of the call and CollieAi's Logs.
 
 In Monitor, the default, the call itself goes on unchanged, whatever the
 answer and whatever fails; block mode refuses it instead, see
@@ -37,9 +38,12 @@ at most 5 s more.
 ## Before you start
 
 * A LiteLLM proxy. The guardrail is tested with **LiteLLM 1.102.4 and
-  1.106.4**. Use 1.102.2 or later: 1.102.0 and 1.102.1 carry the critical advisory
+  1.106.4**; other LiteLLM versions are untested. Don't use 1.102.0 or
+  1.102.1: they carry the critical advisory
   [GHSA-7hp6-4w63-5g45](https://github.com/advisories/GHSA-7hp6-4w63-5g45).
-  Other LiteLLM versions are untested.
+* To see the guardrail's records in LiteLLM's spend logs and its UI, the
+  proxy needs its database (`DATABASE_URL`), see LiteLLM's
+  [proxy docs](https://docs.litellm.ai/docs/simple_proxy).
 * Python 3.11 or later in the proxy's environment. The package needs only
   `httpx`, which LiteLLM already has.
 * A CollieAi project for the guardrail, with an [API key](../getting-started/api-keys.md)
@@ -114,8 +118,10 @@ it first in your image:
 ```dockerfile
 FROM ghcr.io/berriai/litellm:v1.102.4
 RUN python3 -m ensurepip \
- && python3 -m pip install --no-cache-dir collieai-litellm-guardrail
+ && python3 -m pip install --no-cache-dir collieai-litellm-guardrail==0.3.1
 ```
+
+Pin the version, so that rebuilding the image does not change it.
 
 Add the guardrail to the proxy's `config.yaml`:
 
@@ -159,9 +165,14 @@ own machine.
    the same key and deadline. If it fails, a WARNING names why:
    `bypass:auth` for a wrong key, `bypass:capability` with the code and the
    rule for a policy rule the guardrail doesn't run, `bypass:not_found` when
-   the route is off, `bypass:transport` when CollieAi can't be reached. Each
+   the route is off. When CollieAi can't be reached, it is `bypass:transport`
+   if its host can't be resolved or refuses the connection, and
+   `bypass:timeout` with `detail=deadline` if it does not answer in time;
+   then every call waits out the deadline, up to 5 s with the defaults. Each
    line ends with `(guardrail <name>)`, the `guardrail_name` from your
-   `config.yaml`.
+   `config.yaml`. In block mode a failed synthetic check also logs an ERROR,
+   `synthetic check failed in enforcement_mode block`, see
+   [Blocking (pilot)](#blocking-pilot).
 2. **Within a minute**, each worker writes a `collieai guardrail summary` line
    with its counts. No line means the guardrail is not loaded.
 3. **Send a test request** through the proxy. The next summary must show
@@ -179,8 +190,10 @@ CollieAi names what each finding is:
 * `operational_failure`: a detector failed. The finding records that; it is
   no violation.
 
-**In LiteLLM's guardrail log**, each phase adds a record with
-`guardrail_provider: collieai`. With guardrail 0.2.0 and later:
+**In LiteLLM's record of the call** — its spend logs, which the LiteLLM UI
+shows under Logs, and the logging callbacks you set up — each phase adds a
+guardrail record with `guardrail_provider: collieai`. With guardrail 0.2.0 and
+later:
 
 | `guardrail_status` | When |
 |---|---|
@@ -199,25 +212,29 @@ where its spend logs hide the guardrail's response
 
 | Field | A completed check | A bypass, or a call not checked |
 |---|---|---|
-| `guardrail_action` | `"NONE"` when the call went on; `"BLOCKED"` when block mode refused it | `null`; `"BLOCKED"` when block mode refused the call |
-| `violation_categories` | The rule types that found something, for example `["aho_corasick", "structured_id"]`; `null` when nothing was found | `null` |
+| `guardrail_action` | `"NONE"` when the call went on; `"BLOCKED"` when block mode refused it | absent; `"BLOCKED"` when block mode refused the call |
+| `violation_categories` | The rule types that found something, for example `["aho_corasick", "structured_id"]`; `null` when nothing was found | absent |
 
 A category is a [rule type](../api-reference/rules.md): `aho_corasick`,
 `base64_payload`, `language_detection`, `lightweight_model`, `llm_detection`,
 `normalization`, `qwen3guard_stream`, `regex`, `structured_id`, `url_filter`
 or `url_reputation`, or `other`. Rule names are never sent.
 
-The guardrail's response in the record carries what Enforce would have done,
-each finding's rule ID, type and kind, the rules that did not apply to the
-text, and the evaluation ID. It never carries the call's text.
+The guardrail's response in the record carries what the policy, as it is set,
+would do, each finding's rule ID, type and kind, the rules that did not apply
+to the text, and the evaluation ID. It never carries the call's text. LiteLLM's
+spend logs show it only with `store_prompts_in_spend_logs: true`, which stores
+the prompts too; by default they show `REDACTED_BY_LITELM` in its place.
 
 **In CollieAi's [Logs](../monitoring/logs.md)**, each check is a row with
 Source **LiteLLM** and the event type `litellm_guardrail_evaluated`. A check
-that found a `detection` is under **Monitoring**. Its request ID is the
-evaluation ID from LiteLLM's log. Open the row to see each finding with its
-rule and kind, the rules that did not run, and the LiteLLM call ID, from
-`metadata.litellm_call_id` in LiteLLM's record; **All rows of this call**
-shows both phases. The row stores no text of the call.
+that found a `detection` has the status **Monitoring**. To find a call's rows,
+open `https://app.collieai.io/app/logs?litellm_call_id=<id>` with the LiteLLM
+call ID (`metadata.litellm_call_id` in LiteLLM's record). Where LiteLLM shows
+the guardrail's response, a row's request ID is the evaluation ID in it. Open
+the row to see each finding with its rule and kind, the rules that did not run,
+and the LiteLLM call ID; **All rows of this call** shows both phases. The row
+stores no text of the call.
 
 Each phase is one request,
 `POST /v1/integrations/litellm/beta/litellm_basic_guardrail_api`, authorized
@@ -248,27 +265,44 @@ guardrail failed to load lets calls through unchecked.
 
 It needs `mode: [pre_call, post_call]` and `default_on: true`, or the proxy
 does not start. Your project's active policy must be in **Enforce**; with a
-Monitor policy every check is refused, and so is every call.
+Monitor policy every check is refused, and so is every call (`503`). The proxy
+then logs `bypass:capability` with `detail=policy_not_enforce` and the ERROR
+`synthetic check failed in enforcement_mode block`: switch the policy to
+Enforce, or go back to `enforcement_mode: monitor`.
+
+With the [Starter policy](../getting-started/quick-start.md) in Enforce, its
+rules block, except PII (Structured IDs), which masks and so only observes
+here, and the rules the Quick start table says stay in Monitor. Its language
+allowlist then refuses input in languages outside its list. To block on a
+masking rule, open **Configure rules** and set the rule's decision to
+**block**.
 
 | What happens | The client gets | LiteLLM's record |
 |---|---|---|
 | A rule of the policy blocks the request | `400`, `Request blocked by the CollieAi policy (content_blocked)`; the model is not called | `guardrail_intervened`, `guardrail_action: "BLOCKED"`, the rule types in `violation_categories` |
-| A rule blocks the model's reply | `400`, `Response blocked by the CollieAi policy (response_blocked)`; the model's text is not sent | the same |
+| A rule blocks the model's reply | `400`, `Response blocked by the CollieAi policy (response_blocked)`; the model was called and its provider bills the tokens, but the model's text is not sent | the same; LiteLLM records the call as failed, with no tokens or spend (seen with LiteLLM 1.106.5), so its budgets don't count it |
 | The check could not be made: CollieAi unreachable, the deadline, `busy`, any error | `503`, `CollieAi guardrail unavailable (guardrail_unavailable)` | `guardrail_failed_to_respond`, `"BLOCKED"` |
 | A call outside what the guardrail checks: streaming, tools, more than one choice, non-text input, audio or other non-text output asked of the model, reasoning, Responses, `/v1/messages`, pass-through routes, any other call type | `400`, `… (unsupported_request)` before the model, `(unsupported_response)` after it | `guardrail_intervened`, `"BLOCKED"` |
 | Embeddings, rerank, moderation | passes unchecked | `not_run` |
 | Nothing blocks | the call goes on unchanged | as in Monitor |
 
 The text of a refusal is fixed: it never names a rule or carries your policy's
-block message. CollieAi's Logs show the check as **Blocked**. A call refused as
-outside what the guardrail checks has no categories; its code is in
-`guardrail_response.refusal`.
+block message. A `400` means don't retry: the same call is refused again; a
+`503` may be retried. CollieAi's Logs show the check as **Blocked**. A call
+refused as outside what the guardrail checks has no categories; its code is in
+`guardrail_response.refusal`, and it never reaches CollieAi's Logs.
+
+LiteLLM logs each refusal as an ERROR line (`_handle_llm_api_exception`). The
+guardrail's summary counts a rule's refusal under `blocked` and a call outside
+what it checks under `refused`.
 
 What does not block:
 
 * **Masks.** A rule whose action is `mask` only observes in this mode; the
-  text is not changed. Its finding says `mask not applied on LiteLLM`. Give
-  the rule `block` if it must stop the call.
+  text is not changed. CollieAi's Logs show its finding as
+  `mask not applied on LiteLLM`; in the guardrail's response it is
+  `no_enforce_reason: surface_mask_unsupported`. Give the rule `block` if it
+  must stop the call.
 * **A rule left in Monitor** inside the Enforce policy observes.
 * **A detector that failed** follows the rule's own setting: a rule set to
   block on an error blocks, one set to allow lets the call through.
@@ -306,7 +340,8 @@ to 64 texts and 131,072 characters; set the guardrail's
 `max_body_bytes: 3211264` to match.
 
 Block mode needs `LITELLM_GUARDRAIL_ENFORCE_ENABLED=true` on the
-deployment; without it a call in block mode is refused (`503`).
+deployment; without it a call in block mode is refused (`503`), and the
+guardrail's WARNING says `detail=enforce_disabled`.
 
 ## Turning it off
 
