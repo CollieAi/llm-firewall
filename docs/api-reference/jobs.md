@@ -124,31 +124,40 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
 {
   "job_id": "job_abc123def456",
   "status": "completed",
-  "created_at": "2025-01-15T10:30:00Z",
-  "completed_at": "2025-01-15T10:30:05Z",
-  "expires_at": "2025-01-16T10:30:00Z",
+  "inbound_result": {
+    "allowed": true,
+    "filtered_content": "What is the balance on my account?",
+    "blocked": false,
+    "block_message": null,
+    "triggered_rules": [],
+    "threat_intel_observations": []
+  },
+  "outbound_result": {
+    "allowed": true,
+    "filtered_content": "Your balance is on the Accounts page.",
+    "blocked": false,
+    "block_message": null,
+    "triggered_rules": [],
+    "threat_intel_observations": []
+  },
+  "context_result": null,
+  "blocked_by": "none",
+  "input_job_id": null,
+  "webhook_delivery": {
+    "status": "success",
+    "attempts": 1,
+    "last_attempt_at": "2025-01-15T10:30:06Z",
+    "last_response_status": 200,
+    "last_error": null,
+    "next_retry_at": null
+  },
   "metadata": {
     "user_id": "user_123",
     "session_id": "sess_abc"
   },
-  "inbound_result": {
-    "decision": "pass",
-    "rules_evaluated": 3,
-    "rules_triggered": [],
-    "latency_ms": 120
-  },
-  "outbound_result": {
-    "decision": "pass",
-    "rules_evaluated": 4,
-    "rules_triggered": [],
-    "latency_ms": 85
-  },
-  "webhook_delivery": {
-    "url": "https://your-app.com/webhooks/collie",
-    "status": "delivered",
-    "response_code": 200,
-    "delivered_at": "2025-01-15T10:30:06Z"
-  }
+  "created_at": "2025-01-15T10:30:00Z",
+  "expires_at": "2025-01-16T10:30:00Z",
+  "completed_at": "2025-01-15T10:30:05Z"
 }
 ```
 
