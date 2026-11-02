@@ -130,7 +130,8 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
     "blocked": false,
     "block_message": null,
     "triggered_rules": [],
-    "threat_intel_observations": []
+    "threat_intel_observations": [],
+    "llm_detection_stages": []
   },
   "outbound_result": {
     "allowed": true,
@@ -138,7 +139,8 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
     "blocked": false,
     "block_message": null,
     "triggered_rules": [],
-    "threat_intel_observations": []
+    "threat_intel_observations": [],
+    "llm_detection_stages": null
   },
   "context_result": null,
   "blocked_by": "none",
@@ -160,6 +162,65 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
   "completed_at": "2025-01-15T10:30:05Z"
 }
 ```
+
+### How LLM Detection decided
+
+`inbound_result.llm_detection_stages` shows how the [two-phase LLM Detection check](../security-rules/blocking-threats/llm-detection.md) decided, including when nothing triggered. `triggered_rules` lists only rules that fired, so a safe message leaves it empty. `GET /v1/jobs` returns the same field. Webhooks do not carry it.
+
+{% hint style="info" %}
+This field is a diagnostic. The content of a record may change between releases, so do not build enforcement on it. Decide with `allowed`, `blocked` and `triggered_rules`.
+{% endhint %}
+
+| Value | Meaning |
+| --- | --- |
+| `null` | No saved trace: the Input phase is not saved yet or was saved before this field existed, or the job references another job through `input_job_id`, which holds the trace. Always `null` on `outbound_result`. |
+| `[]` | The Input phase is saved and holds no two-phase record. The project has no such rule, an earlier rule ended the check first, or the rule runs the single check. **This does not mean the message was judged safe.** |
+| records | One record for each LLM Detection rule that ran the two phases. If a very long rule chain overflows the limit, the last item is `{"truncated": n}`: `n` records were lost. |
+
+A record for a message that phase 2 cleared, shortened:
+
+```json
+{
+  "v": 2,
+  "pipeline": "cascade",
+  "rule_id": "5f0c2a7e-1b34-4c8d-9e21-7a6d3f10b2c4",
+  "rule_type": "llm_detection",
+  "verdict": "safe",
+  "matched": false,
+  "applied_from": "judge",
+  "router": {
+    "outcome": "evaluated",
+    "label": "thirdparty",
+    "p_label": 0.91,
+    "p_malicious": 0.93,
+    "known_mass": 0.99,
+    "routed_by": "mass",
+    "latency_ms": 41
+  },
+  "judge": {
+    "ran": true,
+    "outcome": "evaluated",
+    "verdict": "safe",
+    "p": {"safe": 0.97, "injection": 0.02, "misuse": 0.01},
+    "history_turns": 0,
+    "degraded_reason": null,
+    "latency_ms": 150
+  },
+  "fallback": {"ran": false, "outcome": null, "verdict": null, "latency_ms": null}
+}
+```
+
+`router` is phase 1 and `judge` is phase 2. To see who decided, read:
+
+| Fields | Who decided |
+| --- | --- |
+| `verdict: safe`, `applied_from: router`, `router.outcome: evaluated` | Phase 1. Phase 2 did not run. |
+| `applied_from: judge` | Phase 2. |
+| `applied_from: fallback` | The fallback check, because phase 2 could not answer or the conversation's saved state could not be read. |
+| `verdict: none`, `applied_from: decision_on_error` | No model decided. `matched` is `true` only under `decision_on_error: block`: a block on failure, not a detection. |
+| `router.outcome: skipped_placeholder` | No model ran: the message was empty or a placeholder. |
+
+`router.routed_by` says why phase 1 sent the message on: `mass` (the malicious categories were likely enough), `unknown` (its answer was mostly outside the known categories), `state` (the conversation is flagged), or `none` (it did not).
 
 ### Job Statuses
 
