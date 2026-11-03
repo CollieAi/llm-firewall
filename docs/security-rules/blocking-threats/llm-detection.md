@@ -425,6 +425,8 @@ In **Logs**, the detail of a request checked by the two phases shows:
 * which phase decided, whether the conversation was flagged, and what degraded;
 * whether the rule's prompts are your own.
 
+The job response shows the same record, for a safe message too: see [How LLM Detection decided](../../api-reference/jobs.md#how-llm-detection-decided).
+
 The **LLM stages** filter finds these requests: **Sent to phase 2**, **Verdict: injection**, **Verdict: misuse** (the final verdict, the fallback check's included), **Fallback check ran** and **Cascade degraded**.
 
 ## Comparison: LLM Detection vs Lightweight Model
