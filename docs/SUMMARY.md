@@ -38,6 +38,7 @@
 ## Integrations
 
 * [LiteLLM guardrail](integrations/litellm.md)
+* [n8n](integrations/n8n.md)
 
 ## Projects & Policies
 
