@@ -10,9 +10,7 @@ icon: plug
 
 {% hint style="info" %}
 Available on app.collieai.io. Tested with n8n **2.46.6 and 3.1.0**, the
-OpenAI Chat Model node and `gpt-4o-mini`. Read
-[Models](#models) before you pick one: n8n's default model, `gpt-5-mini`,
-does not work with the AI Agent yet.
+OpenAI Chat Model node, `gpt-4o-mini` and `gpt-5-mini`.
 {% endhint %}
 
 n8n's AI nodes, such as the AI Agent and the Basic LLM Chain, call their model
@@ -50,14 +48,11 @@ a masked value never reaches the model.
 
 ## Models
 
-* Other OpenAI chat models pass through as they are. We test with
-  `gpt-4o-mini`.
-* **`gpt-5` and `o`-series models** (names that start with `gpt-5`, except
-  `gpt-5-chat`, or with `o` and a digit): for these models n8n sends the system
-  message with the `developer` role, which CollieAi does not accept yet. The
-  call fails with `422` before it reaches OpenAI. The AI Agent always sends a
-  system message, so an agent on `gpt-5-mini`, n8n's default model, fails.
-  Pick another model, for example `gpt-4o-mini`.
+* OpenAI chat models pass through as they are. We test with `gpt-4o-mini`
+  and `gpt-5-mini`, n8n's default. For `gpt-5` and `o`-series models, n8n
+  sends the system message with the `developer` role; CollieAi checks it as a
+  system message. `gpt-5-mini` accepts only the default temperature, so
+  leave **Sampling Temperature** unset for it.
 * **Claude models** (with an Anthropic provider token) work through the same
   credential for calls without tools and without streaming. Tool calls and
   streamed answers are refused. If a model is not in n8n's list, enter it by
