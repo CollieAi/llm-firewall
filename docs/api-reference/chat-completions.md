@@ -46,11 +46,16 @@ Prefer Anthropic's native request shape? Use [`/v1/messages`](messages.md) inste
 
 | Field          | Type            | Required | Description                                                |
 | -------------- | --------------- | -------- | ---------------------------------------------------------- |
-| `role`         | string          | Yes      | One of `system`, `user`, `assistant`, `tool`               |
+| `role`         | string          | Yes      | One of `system`, `developer`, `user`, `assistant`, `tool`  |
 | `content`      | string or array | Yes      | Message content (string or content parts array)            |
 | `name`         | string          | No       | Optional participant name                                  |
 | `tool_calls`   | array           | No       | Tool calls made by the assistant                           |
 | `tool_call_id` | string          | No       | ID of the tool call this message responds to (`tool` role) |
+
+`developer` is the role OpenAI's o-series and gpt-5 models take for the
+system message. CollieAi treats it as a `system` message: your Input rules
+check it on every request, and for `claude-*` models it becomes part of the
+system prompt.
 
 ### Example Request
 
