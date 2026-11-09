@@ -20,10 +20,12 @@ stateDiagram-v2
     processing_inbound --> completed: input-only
     processing_inbound --> processing_outbound: combined (input + output)
     processing_inbound --> awaiting_response: awaiting your LLM response
+    processing_inbound --> failed: the check hit an error
     awaiting_response --> processing_outbound: you POST the response
     processing_outbound --> outbound_blocked: output blocked
     processing_outbound --> delivering: webhook configured
     processing_outbound --> completed: no webhook (polling)
+    processing_outbound --> failed: the check hit an error
     delivering --> completed: delivered
     delivering --> failed: delivery failed after retries
     inbound_blocked --> [*]
@@ -54,7 +56,7 @@ In combined mode (both `message_input` and `message_output` provided), the job s
 | `outbound_blocked`    | Output content was blocked by a policy rule. **Terminal.**                                                     |
 | `delivering`          | Webhook delivery is in progress.                                                                               |
 | `completed`           | All webhooks delivered successfully. **Terminal.**                                                             |
-| `failed`              | Webhook delivery failed after all retry attempts. **Terminal.**                                                |
+| `failed`              | The input or output check hit an error, or webhook delivery failed after all retry attempts. **Terminal.**     |
 | `expired`             | The job timed out before completing. **Terminal.**                                                             |
 
 ***
