@@ -96,6 +96,7 @@
 * [Chat completions](api-reference/chat-completions.md)
 * [Messages (native Anthropic)](api-reference/messages.md)
 * [Jobs](api-reference/jobs.md)
+* [Files](api-reference/files.md)
 * [Projects](api-reference/projects.md)
 * [Policies](api-reference/policies.md)
 * [Rules](api-reference/rules.md)
