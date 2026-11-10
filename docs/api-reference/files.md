@@ -63,6 +63,8 @@ curl -X POST https://app.collieai.io/v1/files \
 
 A file that is never attached to a job is deleted one hour after the upload (`expires_at`).
 
+File names longer than 255 characters are shortened to 255.
+
 ### Errors
 
 | Status | `error.code`                | When                                                                 |
@@ -71,6 +73,7 @@ A file that is never attached to a job is deleted one hour after the upload (`ex
 | 422    | `file_analysis_unavailable` | File analysis is not enabled on this deployment.                     |
 | 422    | `invalid_purpose`           | `purpose` is not `analysis`.                                         |
 | 422    | `empty_file`                | The file has no bytes.                                               |
+| 422    | `missing_file`              | The form has no file in the field `file`.                            |
 | 429    | `file_quota_exceeded`       | The project already stores its maximum of files or bytes (by default 100 files, 200 MB). Released files keep counting until their bytes are deleted. |
 | 503    | `file_store_full`           | The store has no room right now. Retry later.                        |
 
