@@ -168,7 +168,7 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
 `inbound_result.llm_detection_stages` shows how the [two-phase LLM Detection check](../security-rules/blocking-threats/llm-detection.md) decided, including when nothing triggered. `triggered_rules` lists only rules that fired, so a safe message leaves it empty. `GET /v1/jobs` returns the same field. Webhook payloads do not have this field; there, only a rule that fired shows its record, in `triggered_rules[].match_info`.
 
 {% hint style="info" %}
-This field is a diagnostic. The content of a record may change between releases, so do not build enforcement on it. Decide with `allowed` and `blocked`, and only once `status` has left `processing_inbound`: until then `allowed` is `true` because nothing has been checked yet. `triggered_rules` says which rules fired.
+This field is a diagnostic. The content of a record may change between releases, so do not build enforcement on it. Decide with `allowed` and `blocked` only once the status says the check finished, and never in `failed` or `expired`. While `status` is `processing_inbound`, `allowed` is `true` because nothing has been checked yet. In `failed` and `expired` it can be `true` too: a job fails when its check hits an error, as well as when its webhook is not delivered, and expires when its TTL runs out before it reaches a terminal status. Treat the message of such a job as unchecked, as the SDKs do, and check it again with a new job. `triggered_rules` says which rules fired.
 {% endhint %}
 
 | Value | Meaning |
@@ -233,7 +233,7 @@ A record for a message that phase 2 cleared, shortened:
 | `outbound_blocked`    | Blocked by an output rule (terminal)                    |
 | `delivering`          | Webhook delivery in progress                            |
 | `completed`           | Finished successfully (terminal)                        |
-| `failed`              | Webhook delivery failed after retries (terminal)       |
+| `failed`              | The check hit an error, or webhook delivery failed after retries (terminal) |
 | `expired`             | Job exceeded its TTL (terminal)                         |
 
 ### Error Responses
