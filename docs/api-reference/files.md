@@ -69,13 +69,16 @@ File names longer than 255 characters are shortened to 255.
 
 | Status | `error.code`                | When                                                                 |
 | ------ | --------------------------- | -------------------------------------------------------------------- |
+| 411    | `length_required`           | The request has no `Content-Length`.                                 |
 | 413    | `file_too_large`            | The file is larger than the limit (20 MB by default).                |
 | 422    | `file_analysis_unavailable` | File analysis is not enabled on this deployment.                     |
 | 422    | `invalid_purpose`           | `purpose` is not `analysis`.                                         |
 | 422    | `empty_file`                | The file has no bytes.                                               |
 | 422    | `missing_file`              | The form has no file in the field `file`.                            |
+| 422    | `invalid_retain`            | `retain` is not `true` or `false`.                                   |
 | 429    | `file_quota_exceeded`       | The project already stores its maximum of files or bytes (by default 100 files, 200 MB). Released files keep counting until their bytes are deleted. |
 | 503    | `file_store_full`           | The store has no room right now. Retry later.                        |
+| 503    | `file_uploads_busy`         | Too many uploads at once. Retry after the `Retry-After` seconds.     |
 
 ***
 
