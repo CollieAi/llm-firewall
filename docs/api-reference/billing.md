@@ -77,7 +77,8 @@ Get the current user's subscription plan, usage, and limits.
   "current_period_start": null,
   "current_period_end": null,
   "can_upgrade": true,
-  "can_manage": false
+  "can_manage": false,
+  "granted": false
 }
 ```
 
@@ -93,6 +94,7 @@ Get the current user's subscription plan, usage, and limits.
 | `current_period_end`       | Stripe billing cycle end (always `null` for Free users)            |
 | `can_upgrade`              | `true` if the user is on the Free plan                             |
 | `can_manage`               | `true` if the user has a Stripe customer account (can open portal) |
+| `granted`                  | `true` if the paid plan was set by an admin and has no Stripe subscription behind it (nothing to manage in the portal) |
 
 ## POST /api/v1/billing/checkout
 
@@ -179,3 +181,5 @@ Each event ID is tracked in Redis with a 48-hour TTL. Duplicate deliveries are a
 ## Admin Plan Management
 
 Admins can manually change a user's plan via `PATCH /api/v1/admin/users/{user_id}` with the `plan` field (`free` or `growth`). See [Admin API Reference](./overview.md) for details. This is used for manual overrides — for example, comping a customer to Growth-level limits without going through Stripe Checkout.
+
+A plan set this way has no Stripe subscription: `GET /api/v1/billing/subscription` returns `granted: true` for it, and the Pricing page says the plan was granted instead of showing **Manage Subscription**.
