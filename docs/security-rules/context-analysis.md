@@ -143,7 +143,8 @@ The input result gains a typed `context` sub-result and a `blocked_by` field:
 * **`status`** — the closed enum: `not_provided`, `disabled`, `not_run`, `clean`,
   `monitored`, `blocked`, `degraded`.
 * **`blocked_by`** — `prompt`, `context`, or `none`, so you know which surface
-  blocked.
+  blocked. A job with [attachments](../api-reference/jobs.md#attachments-preview) (preview)
+  can also have `file`.
 * **triggering JSON Pointer** + **rule** — *where* and *which detector* fired.
   The pointer is a **path** (e.g. `/transaction/memo`), never the value at it.
 * **degraded markers** — see below.

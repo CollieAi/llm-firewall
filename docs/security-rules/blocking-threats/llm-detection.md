@@ -387,6 +387,18 @@ combines with the built-in per `system_prompt_mode`). It is used **only** on the
 context path — a prompt-path (`message_input`) classification never sees it. If
 left blank, the built-in CONTEXT-DATA MODE prompt is used.
 
+### Attached files (`file_system_prompt`)
+
+**Status: preview — needs enabling.** When a job carries
+[attachments](../../api-reference/jobs.md#attachments-preview), the content of the files is
+judged by one `llm_detection` rule of the policy (its
+[`primary_llm_rule_id`](../../api-reference/files.md#file-analysis-in-a-policy)) with a prompt
+of its own, which judges text in a file by whom it addresses and what it would make the
+assistant do. `file_system_prompt` replaces that built-in prompt whole — there is no
+append mode. It must name the three answers `safe`, `injection` and `misuse`, and is at most
+10,000 characters. Blank, or equal to the built-in prompt, is stored as `null` (the built-in
+applies). Files are not read yet in this step, so the prompt takes effect in a later one.
+
 ### Conversation check (stage 2)
 
 Where the single check runs on Input — on a deployment without the two phases, or on a rule with `cascade.enabled: false` — the rule can ask the model a second time, with the conversation. In those two cases the dashboard shows it as **Conversation check (stage 2)** in the rule's settings, except on a rule for Output only. Where the two phases run, it never runs: phase 2 replaces it. It will be retired once the two phases run everywhere.

@@ -32,6 +32,10 @@ Create a new async job.
 | `expires_in_seconds` | integer | No       | Job TTL in seconds (60–604800). Default: 3600 (1h)                                            |
 | `inbound_only`       | boolean | No       | Only run input rules; complete without awaiting an LLM response. Default: `false`             |
 | `input_job_id`       | string  | No       | Single-use claim: the id of a completed **input-only** job that already evaluated exactly this `message_input`. The server verifies the reference and skips re-filtering the input on this job (one input pass per streaming turn). Requires `message_input`; cannot be combined with `message_output` or `inbound_only`. Used automatically by the SDK streaming wrappers. |
+| `attachments`        | array   | No       | Preview — needs enabling. Up to 3 files uploaded via [`POST /v1/files`](files.md), as `[{"file_id": "file_..."}]`, checked in the Input phase. A job may carry attachments and no text. See [Attachments](#attachments-preview). |
+| `client_deadline_at` | string  | No       | With `attachments`: the moment (ISO 8601, your clock) after which you will not apply the verdict. |
+| `client_now`         | string  | No       | With `client_deadline_at`: your clock when you send the request, so the server can correct the deadline for clock skew. |
+| `attachments_budget_s` | number | No      | With `attachments` and no `client_deadline_at`: the time for the files in seconds, counted from when the server receives the request (above 0, at most 90). Default: 10. |
 
 ### Input-gate claims (`input_job_id`)
 
@@ -46,6 +50,60 @@ not blocked, itself never pre-gated. Outcomes:
 | `409` `input_gate_stale` | The policy changed since the referenced job ran, or it expired. Run the input check again and retry with the fresh id. |
 | `409` `input_gate_unverifiable` | The reference cannot be verified right now. Retry the create **without** `input_job_id` — re-running the input check will not help. |
 | `409` `input_gate_claimed` | The referenced job was already claimed by another create. Each input-only job can gate at most one session, ever. |
+
+### Attachments (preview)
+
+{% hint style="info" %}
+**Status: preview — needs enabling.** File analysis is off on every deployment for now,
+including app.collieai.io; while it is off, a create with `attachments` answers
+`422 file_analysis_unavailable`. In this step the job tracks its files but does not read them
+yet: every file reports `admission.status: "rejected"` with the reason
+`unsupported_media_type` in [`file_result`](#file-result-preview). Reading and checking the
+content of files comes with a later step.
+{% endhint %}
+
+Upload each file with [`POST /v1/files`](files.md) and send its id. The files are checked in
+the Input phase, alongside `message_input` if there is one:
+
+```bash
+curl -X POST https://app.collieai.io/v1/jobs \
+  -H "Authorization: Bearer clai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message_input": "Summarize the attached invoice",
+    "attachments": [{"file_id": "file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234"}],
+    "inbound_only": true,
+    "client_now": "2026-11-10T10:00:00.000Z",
+    "client_deadline_at": "2026-11-10T10:00:09.500Z"
+  }'
+```
+
+* **Without text.** A job may carry only `attachments`. With `inbound_only: true` it completes
+  after the Input phase; without it, it waits in `awaiting_response` like a `message_input`
+  job.
+* **Your deadline.** Tell the server when you stop waiting: `client_deadline_at` with
+  `client_now` (the server moves the deadline into its own clock by the difference), or
+  `attachments_budget_s`. With neither, the files get 10 seconds. The Input phase of a job
+  with attachments ends at that deadline, at most 90 seconds after the request; a file whose
+  check has not finished by then counts as incomplete (`failed`, reason `deadline`). The
+  SDKs send `client_deadline_at` and `client_now` for you.
+* **The decision.** A file that could not be checked fully counts as incomplete. What an
+  incomplete file decides comes from the policy's [`file_analysis`](files.md#file-analysis-in-a-policy)
+  settings: it blocks the job only when the policy enforces them; otherwise it is recorded as
+  `monitor`. When a file blocks the job, the status is `inbound_blocked` and `blocked_by` is
+  `file`; the job does not wait for the rest of its checks.
+* **Files stay in use.** While a job checks a file, the file is `leased`; releasing it then
+  deletes its bytes once the job is done with it ([Files](files.md)).
+
+| Status | `error.code`                    | When                                                                 |
+| ------ | ------------------------------- | -------------------------------------------------------------------- |
+| `400`  | `attachments_with_input_job_id` | `attachments` with `input_job_id`: attach the files to the referenced job instead. |
+| `400`  | `attachments_need_inbound`      | `attachments` on a job with only `message_output`: files are checked in the Input phase. |
+| `400`  | `duplicate_attachment`          | The same file twice in one job.                                      |
+| `404`  | `file_not_found`                | No such file in this project.                                        |
+| `409`  | `file_unavailable`              | The file was released or has expired.                                |
+| `422`  | `file_analysis_unavailable`     | File analysis is not enabled on this deployment.                     |
+| `422`  | — (`error.type`: `validation_error`) | More than 3 attachments, or `attachments_budget_s` outside (0, 90]. |
 
 ### Field Behavior
 
@@ -163,6 +221,50 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
 }
 ```
 
+### File result (preview)
+
+A job with `attachments` has `file_result` once its Input phase is finalized; the key is
+absent on every other job. For a job with attachments and no text, `inbound_result` holds the
+verdict of the Input phase like on any other job. In this step every file is reported as
+`rejected` (see [Attachments](#attachments-preview)):
+
+```json
+{
+  "status": "rejected",
+  "decision": "monitor",
+  "finalized_early": false,
+  "effective_deadline_at": "2026-11-10T10:00:09.480000+00:00",
+  "verdict_at": "2026-11-10T10:00:00.640000+00:00",
+  "verdict_after_client_deadline": false,
+  "applied_by_client": "unknown",
+  "files": [
+    {
+      "file_id": "file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234",
+      "sha256": "3f9a1c2e…",
+      "ordinal": 0,
+      "attempt": 1,
+      "admission": {"status": "rejected", "reasons": ["unsupported_media_type"]},
+      "extraction": {"status": "not_run", "reasons": []},
+      "detection": {"status": "not_run", "reasons": []},
+      "retention_status": "none",
+      "decision": "monitor",
+      "decision_reasons": ["incomplete", "admission:rejected:unsupported_media_type", "extraction:not_run", "detection:not_run"]
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `status` | `complete`, `partial` (some file not checked fully), `failed` (no file could be read) or `rejected` (no file was accepted). |
+| `decision` | The strongest decision of the files and the text: `block`, `monitor` or `allow`. |
+| `finalized_early` | The phase ended before every check finished — a block decided it. |
+| `effective_deadline_at` | Your deadline in the server's clock (from `client_deadline_at`, `attachments_budget_s` or the default). |
+| `verdict_after_client_deadline` | The verdict came after that deadline: you may no longer have applied it. |
+| `applied_by_client` | Always `unknown`: the server does not know whether you applied the verdict. |
+| `files[].admission`, `extraction`, `detection` | Each step's `status` and `reasons`. `not_run` — the step did not run. |
+| `files[].decision`, `decision_reasons` | What the file decides and why (`incomplete` and the steps that were not complete; `not_enforced` when the policy does not enforce a block). |
+
 ### How LLM Detection decided
 
 `inbound_result.llm_detection_stages` shows how the [two-phase LLM Detection check](../security-rules/blocking-threats/llm-detection.md) decided, including when nothing triggered. `triggered_rules` lists only rules that fired, so a safe message leaves it empty. `GET /v1/jobs` returns the same field. Webhook payloads do not have this field; there, only a rule that fired shows its record, in `triggered_rules[].match_info`.
@@ -227,7 +329,7 @@ A record for a message that phase 2 cleared, shortened:
 | Status              | Description                                             |
 | ------------------- | ------------------------------------------------------- |
 | `processing_inbound`  | Input filtering in progress                              |
-| `inbound_blocked`     | Blocked by an input rule (terminal)                     |
+| `inbound_blocked`     | Blocked by an input rule, or by an attachment (terminal) |
 | `awaiting_response`   | Input passed; waiting for you to submit the LLM response |
 | `processing_outbound` | Output filtering in progress                            |
 | `outbound_blocked`    | Blocked by an output rule (terminal)                    |
@@ -496,7 +598,7 @@ curl "https://app.collieai.io/v1/jobs?page=1&page_size=10&status_filter=complete
 
 ### Response -- `200 OK`
 
-Abridged. Each item also has `inbound_result`, `outbound_result`, `context_result`, `blocked_by`, `input_job_id` and `expires_at`, as in `GET /v1/jobs/{job_id}`. In a list, `block_message` and `webhook_delivery` are always `null`.
+Abridged. Each item also has `inbound_result`, `outbound_result`, `context_result`, `blocked_by`, `input_job_id` and `expires_at`, as in `GET /v1/jobs/{job_id}`, and `file_result` on a job with attachments. In a list, `block_message` and `webhook_delivery` are always `null`.
 
 ```json
 {
