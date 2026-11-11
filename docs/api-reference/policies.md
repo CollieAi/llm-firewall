@@ -72,6 +72,7 @@ Create a new shared policy.
 | `name`             | string | Yes      | Policy name                      |
 | `description`      | string | No       | Policy description               |
 | `enforcement_mode` | string | No       | `enforce` (default) or `monitor` |
+| `file_analysis`    | object | No       | Preview — needs enabling. What files attached to jobs decide: see [File analysis in a policy](files.md#file-analysis-in-a-policy) |
 
 #### Example Request
 
@@ -129,6 +130,7 @@ Update a policy.
 | `name`             | string | New policy name        |
 | `description`      | string | New policy description |
 | `enforcement_mode` | string | `enforce` or `monitor` |
+| `file_analysis`    | object | Preview — needs enabling. Replaces the policy's file analysis settings; `null` removes them ([File analysis in a policy](files.md#file-analysis-in-a-policy)) |
 
 #### Example Request
 

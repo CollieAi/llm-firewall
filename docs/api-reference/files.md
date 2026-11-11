@@ -2,7 +2,7 @@
 description: >-
   CollieAi Files API — upload a file for analysis, read its metadata and
   release it via POST /v1/files, GET /v1/files/{file_id} and
-  DELETE /v1/files/{file_id}. Preview: needs enabling.
+  DELETE /v1/files/{file_id}, and attach it to a job. Preview: needs enabling.
 icon: file-arrow-up
 ---
 
@@ -11,8 +11,9 @@ icon: file-arrow-up
 {% hint style="info" %}
 **Status: preview — needs enabling.** File analysis is being rolled out step by step and is
 off on every deployment for now, including app.collieai.io. While it is off, every route on
-this page answers `422 file_analysis_unavailable`. This page describes the upload API of the
-first step; attaching uploaded files to jobs comes with a later step.
+this page answers `422 file_analysis_unavailable`. Uploaded files can be attached to jobs
+([Attachments](jobs.md#attachments-preview)); in this step a job tracks its files but does not
+read them yet — reading and checking their content comes with a later step.
 {% endhint %}
 
 Upload a file once, get a `file_id`, and refer to it later. CollieAi stores the bytes only to
@@ -35,7 +36,7 @@ Upload one file (`multipart/form-data`).
 | --------- | ------- | -------- | --------------------------------------------------------------- |
 | `file`    | file    | Yes      | The file. Its declared type and name are kept as metadata.      |
 | `purpose` | string  | No       | `analysis` — the only value. Default: `analysis`.               |
-| `retain`  | boolean | No       | Keep the file after its jobs finish (later step). Default: `false`. |
+| `retain`  | boolean | No       | Keep the file after the jobs it is attached to finish: it returns to `uploaded` and expires an hour later. Without it, the bytes are deleted once its last job is done. Default: `false`. |
 
 ```bash
 curl -X POST https://app.collieai.io/v1/files \
@@ -97,7 +98,9 @@ curl https://app.collieai.io/v1/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234 \
 | State             | Meaning                                                              |
 | ----------------- | -------------------------------------------------------------------- |
 | `uploaded`        | Stored and ready.                                                    |
-| `release_pending` | You released it; the bytes are about to be deleted.                  |
+| `leased`          | Attached to a job that has not finished checking it.                 |
+| `delete_requested`| You released it while a job uses it; the bytes are deleted once the job is done. |
+| `release_pending` | You released it, or its last job is done; the bytes are about to be deleted. |
 | `expired`         | Its time ran out; the bytes are about to be deleted.                 |
 | `deleted`         | The bytes are gone; `filename` is cleared.                           |
 
@@ -107,8 +110,8 @@ curl https://app.collieai.io/v1/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234 \
 
 ## DELETE /v1/files/{file_id}
 
-Release a file: its bytes are deleted within a few minutes. Releasing an already released file
-succeeds again.
+Release a file: its bytes are deleted within a few minutes — if a job is still checking it, once
+that job is done. Releasing an already released file succeeds again.
 
 ```bash
 curl -X DELETE https://app.collieai.io/v1/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234 \
@@ -117,3 +120,37 @@ curl -X DELETE https://app.collieai.io/v1/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f9
 
 **Response:** `204 No Content`. `404 file_not_found` — no such file in this project, or its
 bytes are already deleted.
+
+***
+
+## File analysis in a policy
+
+Each policy says what attached files decide, in its `file_analysis` object
+([`POST /api/v1/policies`, `PATCH /api/v1/policies/{policy_id}`](policies.md)). A policy without it — or with
+`enabled: false` — never blocks on files: an incomplete file is recorded as `monitor`.
+
+| Field                 | Type   | Default   | Description |
+| --------------------- | ------ | --------- | ----------- |
+| `enabled`             | bool   | `false`   | Analyze attached files (the deployment must have file analysis enabled too). |
+| `decision`            | string | `monitor` | `block` or `monitor`. Under `monitor` every file finding and every incomplete check is recorded, and none blocks. A file blocks a job only under `block` on a policy whose `enforcement_mode` is `enforce`. |
+| `on_incomplete`       | string | `block`   | What a file that could not be checked fully decides: `block` or `monitor`. A file that was not accepted, read or checked completely counts as incomplete. |
+| `rule_scope`          | array  | null      | Advanced: the ids of the rules that check file content. null = the policy's enabled Input rules of the types `llm_detection`, `lightweight_model`, `url_reputation` and `url_filter` whose decision is not `allow`; `regex` and dictionary rules run on files only when listed here. |
+| `primary_llm_rule_id` | string | null      | The `llm_detection` rule that judges the content of files. null = the policy's only enabled Input `llm_detection` rule; with several, choose one here. Its prompt for files is [`file_system_prompt`](../security-rules/blocking-threats/llm-detection.md#attached-files-file_system_prompt). |
+
+```bash
+curl -X PATCH https://app.collieai.io/api/v1/policies/pol_abc123 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_analysis": {"enabled": true, "decision": "monitor", "on_incomplete": "block"}
+  }'
+```
+
+The object is stored whole, with the defaults filled in: a `PATCH` replaces it, and
+`"file_analysis": null` removes it. An unknown field answers `422`. `rule_scope` and
+`primary_llm_rule_id` take effect once files are read (a later step).
+
+The policy's response lists in `file_analysis_warnings` what the settings cannot do with the
+policy's current rules — for example, no enabled Input `llm_detection` rule, several of them
+and no `primary_llm_rule_id`, or no rule in scope. A warning never blocks saving: the rules
+may change later.
