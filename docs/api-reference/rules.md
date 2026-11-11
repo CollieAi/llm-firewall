@@ -1,7 +1,7 @@
 ---
 description: >-
   CollieAi Rules API — create, list, update, delete, and test security rules
-  within a policy via /api/v1/policies/{policy_id}/rules, with all 12 rule types.
+  within a policy via /api/v1/policies/{policy_id}/rules, with all 13 rule types.
 icon: sliders-simple
 ---
 
@@ -19,8 +19,8 @@ The project-independent endpoints under `/api/v1/policies/{policy_id}/rules` are
 | `description`      | string  | No       | Human-readable description                                                                                                                                        |
 | `rule_type`        | string  | Yes      | Rule type (see values below). Cannot be changed after creation                                                                                                    |
 | `order`            | integer | No       | Evaluation order (lower runs first). Default: `5`                                                                                                                 |
-| `direction`        | string  | No       | When to evaluate: `inbound` (Input), `outbound` (Output), or `all`. Default: `all`. The dashboard labels these "Input" / "Output" / "All"; the API field uses the literal values. `qwen3guard_stream` accepts only `outbound`. |
-| `decision`         | string  | Yes      | Action on match: `allow`, `mask`, or `block`. `url_reputation` and `tool_access` accept only `block`.                                                             |
+| `direction`        | string  | No       | When to evaluate: `inbound` (Input), `outbound` (Output), or `all`. Default: `all`. The dashboard labels these "Input" / "Output" / "All"; the API field uses the literal values. `qwen3guard_stream` accepts only `outbound`, `file_policy` only `inbound`. |
+| `decision`         | string  | Yes      | Action on match: `allow`, `mask`, or `block`. `url_reputation`, `file_policy` and `tool_access` accept only `block`.                                              |
 | `config`           | object  | Yes      | Rule-type-specific configuration (validated per `rule_type`)                                                                                                      |
 | `block_message`    | string  | No       | Custom message returned when the rule blocks a request. Default: `Message blocked by security policy`                                                             |
 | `is_enabled`       | boolean | No       | Whether the rule is active. Default: `true`                                                                                                                       |
@@ -43,6 +43,7 @@ The project-independent endpoints under `/api/v1/policies/{policy_id}/rules` are
 | `language_detection` | Detect and filter by language                           |
 | `qwen3guard_stream`  | Streaming guard — safety check of model output (Output only) |
 | `tool_access`        | Allow or deny MCP tool calls by server and tool name    |
+| `file_policy`        | What the structural signals of an attached file decide (preview, one per policy) — see [File policy](../security-rules/blocking-threats/file-policy.md) |
 
 ### Targeting
 
@@ -61,6 +62,7 @@ All selectors must match; a selector you leave out matches anything. A message-o
 
 * `tool_access` must target exactly the `mcp` surface and the `pre` stage (its default), with `direction` `inbound` or `all` and `decision` `block`. Its `config` is `mode` (`allowlist` or `blocklist`) and `tools`, a list of `{"tool_name": ..., "server_id": ...}`; without `server_id` the entry matches that tool on any server.
 * `url_reputation` runs on messages only; `mcp` targeting is refused.
+* `file_policy` takes no `targeting`: it runs on files attached to jobs only.
 * A rule with the `catalog` stage must have `direction` `inbound` or `all`.
 * A detector that fails open — `decision_on_error: "allow"`, set or by default, and always `qwen3guard_stream` — may not target tools that can change data, delete or reach outside systems. Set `decision_on_error: "block"` where the rule type has it, or confine the rule with `registry` `mutating`, `destructive` and `open_world` all `false`.
 
