@@ -128,6 +128,43 @@ Until context analysis is enabled (host flag **and** policy switch), `Context` i
 inert — a safe no-op.
 {% endhint %}
 
+## Check attached files (preview)
+
+{% hint style="info" %}
+**Status: preview — needs enabling.** File analysis is off on every deployment for now,
+including app.collieai.io; until it is on, these calls raise `FileAnalysisUnavailableException`. In this
+step a job tracks its files but does not read them yet: every file reports
+`admission.status: "rejected"` (`unsupported_media_type`) in the file result. Reading and
+checking the content comes with a later step. From SDK 2.3.0.
+{% endhint %}
+
+Upload a file once, then check it with the prompt — or alone (`Prompt` may be omitted):
+
+```csharp
+FileObject file = await collie.Files.UploadAsync("invoice.pdf");   // retain: false by default
+var input = await collie.Moderation.CheckInputAsync(new InputModerationRequest
+{
+    Prompt = "Summarize the attached invoice",
+    Attachments = new[] { file.Id },
+});
+
+if (input.Blocked)
+    return input.BlockMessage ?? "Blocked by policy.";   // input.BlockedBy is "file" when an attachment decided it
+Console.WriteLine(input.FileResult?["status"]);
+
+await collie.Files.DeleteAsync(file.Id);   // the bytes go once no job needs them
+```
+
+`input.FileResult` is the server's summary as a map of `JsonElement` — see
+[File result](../api-reference/jobs.md#file-result-preview). With attachments the SDK tells the
+server when this call stops waiting: `client_deadline_at` = now +
+`CollieClientOptions.Timeout` + `TimeoutS`, computed before the job is created. What a file
+that could not be checked decides comes from the policy's
+[`file_analysis`](../api-reference/files.md#file-analysis-in-a-policy) settings. The files
+client: `collie.Files.UploadAsync(path, retain)`, `GetAsync(fileId)`, `DeleteAsync(fileId)`
+([Files API](../api-reference/files.md)). `ICollieClient.Files` is a default interface member,
+so your own `ICollieClient` implementations keep compiling.
+
 ## Check an output produced outside a wrapper
 
 `ProtectStreamAsync` / `ProtectBufferedAsync` already moderate the streamed
@@ -404,9 +441,11 @@ not exceptions.
 | `ProviderStreamFactoryRequiredException` | the factory returned null / an unusable stream | return a fresh `IAsyncEnumerable<string>` from the factory |
 | `ConcurrentSessionUseException` | overlapping `PushAsync` calls on one session | serialize submits per session |
 | `ModerationException` | a `CheckInputAsync` / `CheckOutputAsync` job failed/expired or timed out | retry the check |
+| `ModerationTimeoutException` (a `ModerationException`, from 2.3.0) | `TimeoutS` ran out before the verdict; `JobId` names the job | retry the check, or raise `TimeoutS` |
 | `MaskedInputException` | the wrapper's own input gate MASKED the prompt — streaming would send the unmasked original to your model | gate manually with `CheckInputAsync`, build the factory over `result.FilteredText` (`""` is a legitimate full wipe), pass `InputResult = result` |
 | `CollieConnectionException` | transport failure (timeout, connection refused) | retry; check connectivity to `BaseUrl` |
 | `CollieApiException` | unexpected HTTP error or malformed response (`Code == "invalid_response"`) | inspect `StatusCode`/`Code`; retry or report |
+| `FileAnalysisUnavailableException` (a `CollieApiException`, from 2.3.0) | file analysis is off on this deployment (`422 file_analysis_unavailable`), or the server ignored the attachments (`Code == "file_result_missing"`) | check without the files, or have file analysis enabled |
 
 ## Retry behavior
 

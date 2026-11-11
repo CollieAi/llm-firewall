@@ -102,6 +102,40 @@ Until context analysis is enabled (the deployment's host flag **and** the policy
 switch), `context` is inert — a safe no-op (`status` `disabled` / `not_provided`).
 {% endhint %}
 
+## Check attached files (preview)
+
+{% hint style="info" %}
+**Status: preview — needs enabling.** File analysis is off on every deployment for now,
+including app.collieai.io; until it is on, these calls raise `FileAnalysisUnavailable`. In this
+step a job tracks its files but does not read them yet: every file reports
+`admission.status: "rejected"` (`unsupported_media_type`) in the file result. Reading and
+checking the content comes with a later step. From SDK 2.3.0.
+{% endhint %}
+
+Upload a file once, then check it with the prompt — or alone (`prompt` may be omitted):
+
+```python
+file = await collie.files.upload("invoice.pdf")      # FileObject; retain=False by default
+result = await collie.moderate.input("Summarize the attached invoice", attachments=[file.id])
+
+if result.blocked:
+    # result.blocked_by is "file" when an attachment decided it
+    return result.block_message or "Blocked by policy."
+print(result.file_result["status"], result.file_result["decision"])
+
+await collie.files.delete(file.id)   # the bytes go once no job needs them
+```
+
+`result.file_result` is the server's summary as a mapping — see
+[File result](../api-reference/jobs.md#file-result-preview). With attachments the SDK tells the
+server when this call stops waiting: `client_deadline_at` = now + the client's `timeout` +
+`timeout_s`, computed before the job is created. A client built with `timeout=None` (or an
+`httpx.Timeout` without a read timeout) sends `timeout_s` as the files' budget instead, at
+most 90 seconds. What a file that could not be checked decides comes from the policy's
+[`file_analysis`](../api-reference/files.md#file-analysis-in-a-policy) settings. The files
+client: `collie.files.upload(path, *, retain=False)`, `.get(file_id)`, `.delete(file_id)`
+([Files API](../api-reference/files.md)).
+
 ## Check an output produced outside a wrapper
 
 `protect_stream` / `protect_buffered` already moderate the streamed answer. Use
@@ -409,9 +443,11 @@ Catch typed exceptions instead of parsing strings. All inherit from
 | `ProviderStreamFactoryRequired` | passed a started stream (or non-async-iterable) instead of a factory | pass a zero-arg callable: `lambda: my_stream()` |
 | `ConcurrentSessionUseError` | overlapping `push()` calls on one low-level session | serialize submits per session |
 | `ModerationError` | a `moderate.input` / `moderate.output` job failed/expired or timed out | retry the check |
+| `ModerationTimeout` *(a `ModerationError`, from 2.3.0)* | `timeout_s` ran out before the verdict; `job_id` names the job | retry the check, or raise `timeout_s` |
 | `MaskedInputError` | the wrapper's own input gate MASKED the prompt — streaming would send the unmasked original to your model | gate manually with `moderate.input`, build the factory over `result.filtered_text` (`""` is a legitimate full wipe), pass `input_result=result` |
 | `CollieConnectionError` | transport failure (timeout, connection refused) | retry; check connectivity to `base_url` |
 | `CollieAPIError` | unexpected HTTP error or malformed response (`code="invalid_response"`) | inspect `status_code`/`code`; retry or report |
+| `FileAnalysisUnavailable` *(a `CollieAPIError`, from 2.3.0)* | file analysis is off on this deployment (`422 file_analysis_unavailable`), or the server ignored the attachments (`code="file_result_missing"`) | check without the files, or have file analysis enabled |
 
 ## Retry behavior
 
