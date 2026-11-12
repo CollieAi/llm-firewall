@@ -151,6 +151,8 @@ Click **Manage Subscription** on the Pricing page to open the Stripe Customer Po
 
 When you cancel, your Growth plan remains active until the end of the current billing period, then downgrades to Free.
 
+If CollieAi granted you the Growth plan rather than you buying it, there is no subscription to manage or pay for: the Pricing page says the plan was granted and shows no **Manage Subscription** button.
+
 ***
 
 ## Self-hosted deployments
