@@ -48,6 +48,12 @@ at most 5 s more.
   (`clai_…`), and a policy whose rule configurations are admitted by the
   server profile, see below.
 
+[Get Started](https://app.collieai.io/app/get-started?option=litellm) has a
+LiteLLM panel with your project's values: the `.env` line with its key, an
+instruction for a coding agent, and the install blocks below with your
+CollieAi address filled in. A new account gets a project, its key and the
+Starter policy there, see [Quick start](../getting-started/quick-start.md).
+
 ## Your project's policy
 
 On `app.collieai.io`, the `stage1a-monitor-all-v2` server profile runs every

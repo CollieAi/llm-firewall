@@ -61,9 +61,12 @@ Get Started lists the ways to connect. Pick one; **All options** takes you back 
 | Anthropic proxy                   | Anthropic                            | input and output                    |
 | CollieAi SDK (Python, Node, .NET) | not needed — you call your own model | input and output, streams included  |
 | Async Jobs API                    | not needed — you call your own model | input, and output if you send it    |
-| Playground                        | not needed                           | a prompt and a model answer you paste |
+| LiteLLM guardrail                 | not needed — LiteLLM keeps its own   | non-streaming chat calls with text, before and after the model |
+| n8n                               | the node: none in CollieAi, a model credential in n8n; the proxy: OpenAI | the node: the texts you give it; the proxy: every model call of an AI Agent |
 
-Every option except the Playground walks you through these steps — four for the proxies, three for the SDK and the Async Jobs API, which need no provider key:
+The LiteLLM guardrail is listed where your CollieAi server runs it; app.collieai.io does. Under the options, **Try the Playground** opens the Playground: paste a prompt and a model answer, with no code and no provider key.
+
+The proxies, the SDK and the Async Jobs API walk you through these steps — four for the proxies, three for the SDK and the Async Jobs API, which need no provider key:
 
 1. **Add your provider key** (proxies only). CollieAi forwards your requests to OpenAI or Anthropic with your own key, stored encrypted. Without it every proxied request is refused.
 2. **Put your CollieAi key in the app's environment** as `COLLIEAI_API_KEY`.
@@ -87,13 +90,26 @@ resp = client.chat.completions.create(
 print(resp.choices[0].message.content)
 ```
 
-The Playground opens directly — no steps and no code. Requests from it show in Logs, but do not count as a connected app.
+**The LiteLLM guardrail** needs no provider key: the models' keys stay in LiteLLM. Put your CollieAi key in the proxy's environment, let a coding agent add the guardrail or add the package and the `config.yaml` block yourself, restart the proxy, and send a test request through it. The guardrail checks non-streaming chat calls with text; streaming, tool calls, images and reasoning pass unchecked, so for a streaming app use the CollieAi SDK. See [LiteLLM guardrail](../integrations/litellm.md).
+
+**n8n** starts with a question: where does your n8n run?
+
+* **Self-hosted n8n** gets the CollieAi node. Install `@collieai/n8n-nodes-collieai` from **Settings → Community Nodes**, create a CollieAi API credential with the key and base URL Get Started shows, then **Copy workflow** and paste it on an empty canvas. The workflow checks the user's message before the AI Agent and the reply after it. CollieAi needs no provider key for it: the model credential is n8n's. **Use the proxy instead** switches to the proxy.
+* **n8n Cloud** gets the proxy, since it installs only community nodes n8n has verified. Add your OpenAI key, create an OpenAI credential in n8n with the base URL `https://app.collieai.io/v1`, and use it in an OpenAI Chat Model node. If your AI Agent uses tools and the policy has Output rules, Get Started says what to change.
+
+See [n8n](../integrations/n8n.md). Both the LiteLLM guardrail and n8n end with a test: a message with a prompt injection to send through your proxy or the n8n chat, for the policy to find.
+
+Requests from the Playground show in Logs, but do not count as a connected app.
 {% endstep %}
 
 {% step %}
 ### See your first request
 
 The **Last request** card on Get Started shows your latest request within seconds: when it arrived, through which option, and whether it went through, was blocked by the policy, is still being processed or failed — with the reason. If the provider key is missing or the provider refused it, the card says so, with a button to **Provider tokens**.
+
+A LiteLLM call is checked twice, before the model and after it. The card shows the two checks as one request, or one of them as **LiteLLM guardrail · pre-call** or **post-call** while it is alone. n8n checks are shown one at a time, as **n8n · Check Input** or **n8n · Check Output**; a call through the proxy shows as the OpenAI-compatible proxy.
+
+Before the first call, a LiteLLM proxy that has started shows **CollieAi connection is ready**: the guardrail reached CollieAi. That is not a request from your app. Send a non-streaming chat call through the proxy to confirm the guardrail runs on your traffic. **Some rules could not run on this request** means the check was incomplete: some rule of the policy did not run on it.
 
 **Open Logs** shows the full record of the request and what each rule found.
 {% endstep %}

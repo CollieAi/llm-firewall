@@ -42,6 +42,11 @@ the workflow unless the agent's **On Error** handles it.
 * If your account has an [IP allowlist](../getting-started/ip-allowlist.md),
   add n8n's outgoing addresses to it.
 
+[Get Started](https://app.collieai.io/app/get-started?option=n8n) has an n8n
+panel. It asks where your n8n runs and shows the steps with your project's
+key and base URL: for self-hosted n8n the node and a workflow to paste, for
+n8n Cloud the proxy.
+
 ## The CollieAi node
 
 ### Install
