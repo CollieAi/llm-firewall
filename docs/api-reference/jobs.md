@@ -32,7 +32,7 @@ Create a new async job.
 | `expires_in_seconds` | integer | No       | Job TTL in seconds (60–604800). Default: 3600 (1h)                                            |
 | `inbound_only`       | boolean | No       | Only run input rules; complete without awaiting an LLM response. Default: `false`             |
 | `input_job_id`       | string  | No       | Single-use claim: the id of a completed **input-only** job that already evaluated exactly this `message_input`. The server verifies the reference and skips re-filtering the input on this job (one input pass per streaming turn). Requires `message_input`; cannot be combined with `message_output` or `inbound_only`. Used automatically by the SDK streaming wrappers. |
-| `attachments`        | array   | No       | Preview — needs enabling. Up to 3 files uploaded via [`POST /v1/files`](files.md), as `[{"file_id": "file_..."}]`, checked in the Input phase. A job may carry attachments and no text. See [Attachments](#attachments-preview). |
+| `attachments`        | array   | No       | Preview — on at app.collieai.io. Up to 3 files uploaded via [`POST /v1/files`](files.md), as `[{"file_id": "file_..."}]`, checked in the Input phase. A job may carry attachments and no text. See [Attachments](#attachments-preview). |
 | `client_deadline_at` | string  | No       | With `attachments`: the moment (ISO 8601, your clock) after which you will not apply the verdict. |
 | `client_now`         | string  | No       | With `client_deadline_at`: your clock when you send the request, so the server can correct the deadline for clock skew. |
 | `attachments_budget_s` | number | No      | With `attachments` and no `client_deadline_at`: the time for the files in seconds, counted from when the server receives the request (above 0, at most 90). Default: 10. |
@@ -54,13 +54,30 @@ not blocked, itself never pre-gated. Outcomes:
 ### Attachments (preview)
 
 {% hint style="info" %}
-**Status: preview — needs enabling.** File analysis is off on every deployment for now,
-including app.collieai.io; while it is off, a create with `attachments` answers
-`422 file_analysis_unavailable`. In this step the job tracks its files but does not read them
-yet: every file reports `admission.status: "rejected"` with the reason
-`unsupported_media_type` in [`file_result`](#file-result-preview). Reading and checking the
-content of files comes with a later step.
+**Status: preview — on at app.collieai.io.** Other deployments need to enable file analysis;
+while it is off there, a create with `attachments` answers `422 file_analysis_unavailable`.
+Your policy turns the check on in its [`file_analysis`](files.md#file-analysis-in-a-policy)
+settings. In this step file findings are recorded, not blocked: `decision: "block"` takes
+effect with the full coverage profile (OCR) in a later step.
 {% endhint %}
+
+What this step reads and checks:
+
+* **Read:** a PDF's text layer (not its rendered page) and its metadata — document
+  properties, annotations, outline, form values; a CSV file; an XLSX workbook's cells,
+  formulas, comments, hyperlinks, names and text boxes, hidden sheets included. Each file is
+  read in an isolated sandbox.
+* **Not read yet:** images (JPEG, PNG; they need OCR, a later step) and every other type,
+  macro-enabled workbooks included. Such a file reports `admission.status: "rejected"` with
+  the reason `unsupported_media_type` in [`file_result`](#file-result-preview) and counts as
+  incomplete.
+* **The text** of a file is checked by the policy's Input rules (the file analysis
+  `rule_scope`) and judged by its `llm_detection` rule with that rule's prompt for files,
+  [`file_system_prompt`](../security-rules/blocking-threats/llm-detection.md#attached-files-file_system_prompt).
+  The judge reads the job's `message_input` as the user's request for the file.
+* **The structure** of a file — hidden text, hidden sheets, active content, a type that is not
+  what the file claims — is decided by the policy's
+  [`file_policy`](../security-rules/blocking-threats/file-policy.md) rule.
 
 Upload each file with [`POST /v1/files`](files.md) and send its id. The files are checked in
 the Input phase, alongside `message_input` if there is one:
@@ -87,11 +104,14 @@ curl -X POST https://app.collieai.io/v1/jobs \
   with attachments ends at that deadline, at most 90 seconds after the request; a file whose
   check has not finished by then counts as incomplete (`failed`, reason `deadline`). The
   SDKs send `client_deadline_at` and `client_now` for you.
-* **The decision.** A file that could not be checked fully counts as incomplete. What an
-  incomplete file decides comes from the policy's [`file_analysis`](files.md#file-analysis-in-a-policy)
-  settings: it blocks the job only when the policy enforces them; otherwise it is recorded as
-  `monitor`. When a file blocks the job, the status is `inbound_blocked` and `blocked_by` is
-  `file`; the job does not wait for the rest of its checks.
+* **The decision.** In this step a file never blocks the job, whatever the policy's
+  [`file_analysis`](files.md#file-analysis-in-a-policy) `decision`: a finding is recorded as
+  `monitor`, and a file that could not be checked fully — not accepted, read or checked
+  completely — counts as incomplete and is recorded as `monitor` too (with the reason
+  `not_enforced` where `on_incomplete` is `block`). The text of the job still blocks as usual.
+  With the full coverage profile in a later step, `block` takes effect on a policy that
+  enforces: a file that blocks the job then sets the status `inbound_blocked` and `blocked_by`
+  to `file`, and the job does not wait for the rest of its checks.
 * **Files stay in use.** While a job checks a file, the file is `leased`; releasing it then
   deletes its bytes once the job is done with it ([Files](files.md)).
 
@@ -225,14 +245,22 @@ curl https://app.collieai.io/v1/jobs/job_abc123def456 \
 
 A job with `attachments` has `file_result` once its Input phase is finalized; the key is
 absent on every other job. For a job with attachments and no text, `inbound_result` holds the
-verdict of the Input phase like on any other job. In this step every file is reported as
-`rejected` (see [Attachments](#attachments-preview)):
+verdict of the Input phase like on any other job. A one-page PDF with a line of white text on
+a white page, which the file judge found to be an injection — recorded, not blocked; in this
+step the result is the same under `decision: "block"`:
 
 ```json
 {
-  "status": "rejected",
+  "status": "complete",
   "decision": "monitor",
   "finalized_early": false,
+  "coverage_profile": "text_layer",
+  "coverage_profile_version": 1,
+  "versions": {
+    "file_policy_rule_id": "9a1d7c3e-2b45-4f6a-8c90-1e2d3f4a5b6c",
+    "file_policy_defaults_version": 1,
+    "file_judge_prompt": "builtin:aadc05b2"
+  },
   "effective_deadline_at": "2026-11-10T10:00:09.480000+00:00",
   "verdict_at": "2026-11-10T10:00:00.640000+00:00",
   "verdict_after_client_deadline": false,
@@ -243,12 +271,54 @@ verdict of the Input phase like on any other job. In this step every file is rep
       "sha256": "3f9a1c2e…",
       "ordinal": 0,
       "attempt": 1,
-      "admission": {"status": "rejected", "reasons": ["unsupported_media_type"]},
-      "extraction": {"status": "not_run", "reasons": []},
-      "detection": {"status": "not_run", "reasons": []},
+      "admission": {"status": "accepted", "reasons": []},
+      "declared_class": "pdf",
+      "detected_class": "pdf",
+      "magika": {"label": "pdf", "score": 0.999},
+      "extraction": {
+        "status": "complete",
+        "reasons": [],
+        "coverage": {"pages_total": 1, "pages_text": 1, "pages_ocr": null, "cells_total": null, "chars_union": 97, "truncated": false}
+      },
+      "detection": {"status": "complete", "reasons": [], "windows_total": 2, "windows_evaluated": 2, "llm_calls": 2, "judge_attempts": 2},
+      "required_checks": ["text_layer", "clipped", "glyph_substitution", "hidden_ocg", "occluded", "tr3_over_image", "transparent"],
+      "missing_checks": ["clipped", "glyph_substitution", "hidden_ocg", "occluded", "tr3_over_image", "transparent"],
+      "signals": [
+        {"name": "active_content", "state": "absent", "count": 0},
+        {"name": "embedded_or_external", "state": "absent", "count": 0},
+        {"name": "type_class_mismatch", "state": "absent", "count": 0},
+        {"name": "hidden_text", "state": "present", "count": 1, "locations": [{"page": 0, "bbox": [73.0, 717.7, 267.2, 727.9]}]},
+        {"name": "layer_ocr_mismatch", "state": "not_checked", "count": 0},
+        {"name": "scanned_ocr_layer", "state": "absent", "count": 0}
+      ],
+      "findings": [
+        {
+          "rule_id": "5f0c2a7e-1b34-4c8d-9e21-7a6d3f10b2c4",
+          "rule_type": "llm_detection",
+          "detector": "hidden_injection",
+          "rule_action": "block",
+          "effective_action": "monitor",
+          "no_enforce_reason": "surface_monitor_only",
+          "count": 1,
+          "verdict": "injection",
+          "where": {"page": 0, "bbox": [73.0, 717.7, 267.2, 727.9], "channel": "text_layer", "hidden": true},
+          "evidence": {"window_fp": "hmac:v1:cbd0184f…"}
+        },
+        {
+          "rule_id": "9a1d7c3e-2b45-4f6a-8c90-1e2d3f4a5b6c",
+          "rule_type": "file_policy",
+          "detector": "hidden_text",
+          "rule_action": "monitor",
+          "effective_action": "monitor",
+          "no_enforce_reason": "decision_monitor",
+          "count": 1,
+          "signal": "hidden_text"
+        }
+      ],
+      "versions": {"extractor": "fx-3", "pypdfium2": "5.15.2", "pdfium": "159.0.8149.0", "pikepdf": "10.18.0"},
       "retention_status": "none",
       "decision": "monitor",
-      "decision_reasons": ["incomplete", "admission:rejected:unsupported_media_type", "extraction:not_run", "detection:not_run"]
+      "decision_reasons": ["llm_detection:hidden_injection", "file_policy:hidden_text"]
     }
   ]
 }
@@ -259,11 +329,35 @@ verdict of the Input phase like on any other job. In this step every file is rep
 | `status` | `complete`, `partial` (some file not checked fully), `failed` (no file could be read) or `rejected` (no file was accepted). |
 | `decision` | The strongest decision of the files and the text: `block`, `monitor` or `allow`. |
 | `finalized_early` | The phase ended before every check finished — a block decided it. |
+| `coverage_profile`, `coverage_profile_version` | What this step checks: `text_layer`, version `1` — the text a file holds, not what its rendered page shows. |
+| `versions` | The policy's `file_policy` rule the job used (`file_policy_rule_id`, `file_policy_defaults_version`) and the file judge's prompt (`file_judge_prompt`: `builtin` or `custom`, and a short hash of the text). |
 | `effective_deadline_at` | Your deadline in the server's clock (from `client_deadline_at`, `attachments_budget_s` or the default). |
 | `verdict_after_client_deadline` | The verdict came after that deadline: you may no longer have applied it. |
 | `applied_by_client` | Always `unknown`: the server does not know whether you applied the verdict. |
-| `files[].admission`, `extraction`, `detection` | Each step's `status` and `reasons`. `not_run` — the step did not run. |
-| `files[].decision`, `decision_reasons` | What the file decides and why (`incomplete` and the steps that were not complete; `not_enforced` when the policy does not enforce a block). |
+| `files[].admission`, `extraction`, `detection` | Each step's `status` and `reasons`. `not_run` — the step did not run. See the admission reasons below. |
+| `files[].declared_class`, `detected_class`, `magika` | The type the upload declared (`pdf`, `csv`, `xlsx`, `jpeg`, `png`, `csv\|xlsx` or `unknown`), the type found in the bytes, and the file type detector's label and score. |
+| `files[].extraction.coverage` | What was read: `pages_total` and `pages_text` (PDF), `cells_total` (CSV, XLSX), `chars_union` (characters read) and `truncated` (the file had more text than is read; the extraction is then `partial`). `pages_ocr` is for OCR, a later step. |
+| `files[].detection` | Also: `windows_total` and `windows_evaluated` — the parts of the text checked, and how many every check finished on; `llm_calls` — the parts the file judge was asked about; `judge_attempts` — its calls, retries included. `facts` may hold `no_request` (the job has no `message_input`, so misuse was not judged) or `request_too_long`. |
+| `files[].required_checks`, `missing_checks` | The checks a full analysis needs, and those this step does not run yet: for a PDF, the tricks only the rendered page shows (`clipped`, `glyph_substitution`, `hidden_ocg`, `occluded`, `transparent`, `tr3_over_image`) — text they hide is checked as visible text; for a workbook with images, `ocr`. Because of them, file findings are recorded and not blocked in this step. |
+| `files[].signals` | The file's structural signals: `name`, `state` (`present`, `absent` or `not_checked`), `count`, and where they were found (`locations`). A [`file_policy`](../security-rules/blocking-threats/file-policy.md) rule decides what a present signal does. |
+| `files[].findings` | What the checks found. `detector` is `llm_detection`, `hidden_injection` (an injection in text a reader does not see), `misuse`, another rule type, or the signal a `file_policy` finding is about. `rule_action` is what the rule asks for; `effective_action` what it did — `monitor` in this step — and `no_enforce_reason` why it did not block (`surface_monitor_only`: file findings are recorded, not blocked; `decision_monitor`: the rule itself asks for `monitor`). `where` locates the text: `page` (from 0) and `bbox`, or `sheet_fp`, `cell`, `row`, `col`, with its `channel` and whether it is `hidden`. A finding in a PDF's metadata is only ever recorded (`channel_monitor_only`). `evidence` holds keyed fingerprints of the text (`window_fp`, `match_fp`) — never the text. |
+| `files[].versions` | The versions of the extractor and its libraries. |
+| `files[].retention_status` | Always `none`: no file is kept for review in this step. |
+| `files[].decision`, `decision_reasons` | What the file decides — `monitor` or `allow` in this step — and why: each finding as `<rule_type>:<detector or signal>`; `incomplete` and the steps that were not complete; `not_enforced` when a `block` was not applied. |
+
+Admission reasons (`files[].admission.reasons`) when a file is not accepted:
+
+| Status | Reason | When |
+| --- | --- | --- |
+| `rejected` | `unsupported_media_type` | A type this step does not read: an image, or any type other than PDF, CSV and XLSX. |
+| `rejected` | `class_not_allowed` | A type outside the policy's `allowed_classes`. |
+| `rejected` | `encrypted` | A password-protected PDF. |
+| `rejected` | `too_many_pages` | A PDF of more than 50 pages. |
+| `rejected` | `too_many_cells` | A CSV or XLSX file of more than 200,000 cells, or a CSV file of more than 50,000 rows. |
+| `rejected` | `zip_limits` | An XLSX file whose archive is beyond the limits (entries, unpacked size, compression ratio). |
+| `rejected` | `exceeds_client_budget` | The files would not be checked by your deadline. |
+| `failed` | `malformed` | The file cannot be opened. |
+| `failed` | `deadline`, `runner_busy`, `runner_unavailable`, … | The file could not be examined: your deadline had passed, or the service that reads files was busy or unavailable. |
 
 ### How LLM Detection decided
 

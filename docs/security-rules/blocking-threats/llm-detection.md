@@ -389,7 +389,7 @@ left blank, the built-in CONTEXT-DATA MODE prompt is used.
 
 ### Attached files (`file_system_prompt`)
 
-**Status: preview — needs enabling.** When a job carries
+**Status: preview — on at app.collieai.io; other deployments need enabling.** When a job carries
 [attachments](../../api-reference/jobs.md#attachments-preview), the content of the files is
 judged by one `llm_detection` rule of the policy (its
 [`primary_llm_rule_id`](../../api-reference/files.md#file-analysis-in-a-policy)) with a prompt
@@ -397,7 +397,15 @@ of its own, which judges text in a file by whom it addresses and what it would m
 assistant do. `file_system_prompt` replaces that built-in prompt whole — there is no
 append mode. It must name the three answers `safe`, `injection` and `misuse`, and is at most
 10,000 characters. Blank, or equal to the built-in prompt, is stored as `null` (the built-in
-applies). Files are not read yet in this step, so the prompt takes effect in a later one.
+applies).
+
+The judge reads the text of an attached PDF, CSV or XLSX file part by part — text hidden in the
+file included — together with the job's `message_input` as the user's request. `injection` and
+`misuse` are findings in the job's [`file_result`](../../api-reference/jobs.md#file-result-preview).
+In this step they are recorded, not blocked, whatever the policy's file analysis `decision`:
+`block` takes effect with the full coverage profile (OCR) in a later step. Without
+a request (a job with attachments and no text) the judge never answers `misuse`. A job pins
+the prompt when it is created, so a change applies to jobs created afterwards.
 
 ### Conversation check (stage 2)
 

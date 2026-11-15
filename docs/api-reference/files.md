@@ -2,18 +2,21 @@
 description: >-
   CollieAi Files API — upload a file for analysis, read its metadata and
   release it via POST /v1/files, GET /v1/files/{file_id} and
-  DELETE /v1/files/{file_id}, and attach it to a job. Preview: needs enabling.
+  DELETE /v1/files/{file_id}, and attach it to a job. Preview: on at
+  app.collieai.io.
 icon: file-arrow-up
 ---
 
 # Files
 
 {% hint style="info" %}
-**Status: preview — needs enabling.** File analysis is being rolled out step by step and is
-off on every deployment for now, including app.collieai.io. While it is off, every route on
-this page answers `422 file_analysis_unavailable`. Uploaded files can be attached to jobs
-([Attachments](jobs.md#attachments-preview)); in this step a job tracks its files but does not
-read them yet — reading and checking their content comes with a later step.
+**Status: preview — on at app.collieai.io.** File analysis is being rolled out step by step.
+It is on at app.collieai.io; other deployments need to enable it, and while it is off there,
+every route on this page answers `422 file_analysis_unavailable`. Uploaded files can be
+attached to jobs ([Attachments](jobs.md#attachments-preview)): a PDF (its text layer), CSV or
+XLSX file is read in an isolated sandbox and checked by your policy's rules once the policy
+turns file analysis on ([File analysis in a policy](#file-analysis-in-a-policy)). In this step
+what the check finds is recorded, not blocked. Images and other types are not read yet.
 {% endhint %}
 
 Upload a file once, get a `file_id`, and refer to it later. CollieAi stores the bytes only to
@@ -127,15 +130,18 @@ bytes are already deleted.
 
 Each policy says what attached files decide, in its `file_analysis` object
 ([`POST /api/v1/policies`, `PATCH /api/v1/policies/{policy_id}`](policies.md)). A policy without it — or with
-`enabled: false` — never blocks on files: an incomplete file is recorded as `monitor`.
+`enabled: false` — never blocks on files: their content is not checked, and every file is
+recorded as `monitor`.
 
 | Field                 | Type   | Default   | Description |
 | --------------------- | ------ | --------- | ----------- |
 | `enabled`             | bool   | `false`   | Analyze attached files (the deployment must have file analysis enabled too). |
-| `decision`            | string | `monitor` | `block` or `monitor`. Under `monitor` every file finding and every incomplete check is recorded, and none blocks. A file blocks a job only under `block` on a policy whose `enforcement_mode` is `enforce`. |
-| `on_incomplete`       | string | `block`   | What a file that could not be checked fully decides: `block` or `monitor`. A file that was not accepted, read or checked completely counts as incomplete. |
+| `decision`            | string | `monitor` | `block` or `monitor`; both are accepted and saved. Under `monitor` every file finding and every incomplete check is recorded, and none blocks. In this step a file never blocks, under `block` too: every finding is recorded as `monitor`, because the text layer is not everything a reader sees (`missing_checks` in the [file result](jobs.md#file-result-preview)). `block` takes effect with the full coverage profile (OCR) in a later step; then a file blocks a job under `block` on a policy whose `enforcement_mode` is `enforce`. `decision` also sets the default of `proxy_binary_parts`, which applies now. |
+| `on_incomplete`       | string | `block`   | What a file that could not be checked fully decides: `block` or `monitor`. A file that was not accepted, read or checked completely counts as incomplete. In this step a `block` here is recorded as `monitor`, with the reason `not_enforced`. |
+| `allowed_classes`     | array  | null      | The file types the policy lets through: `pdf`, `csv`, `xlsx`, `jpeg`, `png` (images are not read yet). null = every type the deployment reads. A file of another type is rejected with the reason `class_not_allowed`. |
 | `rule_scope`          | array  | null      | Advanced: the ids of the rules that check file content. null = the policy's enabled Input rules of the types `llm_detection`, `lightweight_model`, `url_reputation` and `url_filter` whose decision is not `allow`; `regex` and dictionary rules run on files only when listed here. |
 | `primary_llm_rule_id` | string | null      | The `llm_detection` rule that judges the content of files. null = the policy's only enabled Input `llm_detection` rule; with several, choose one here. Its prompt for files is [`file_system_prompt`](../security-rules/blocking-threats/llm-detection.md#attached-files-file_system_prompt). |
+| `proxy_binary_parts`  | string | null      | What [`/v1/chat/completions`](chat-completions.md#image-audio-and-file-parts) does with image, audio and file parts, which it does not check: `reject` the request, or `pass_uninspected` — the parts reach the model unchecked. null = `reject` when `decision` is `block`, `pass_uninspected` when it is `monitor`. |
 
 ```bash
 curl -X PATCH https://app.collieai.io/api/v1/policies/pol_abc123 \
@@ -147,8 +153,11 @@ curl -X PATCH https://app.collieai.io/api/v1/policies/pol_abc123 \
 ```
 
 The object is stored whole, with the defaults filled in: a `PATCH` replaces it, and
-`"file_analysis": null` removes it. An unknown field answers `422`. `rule_scope` and
-`primary_llm_rule_id` take effect once files are read (a later step).
+`"file_analysis": null` removes it. An unknown field answers `422`. The rules in `rule_scope`
+and the `primary_llm_rule_id` rule check the text of a file; a
+[`file_policy`](../security-rules/blocking-threats/file-policy.md) rule decides what its
+structure does — hidden text, hidden sheets, active content, a type that is not what the file
+claims.
 
 The policy's response lists in `file_analysis_warnings` what the settings cannot do with the
 policy's current rules — for example, no enabled Input `llm_detection` rule, several of them

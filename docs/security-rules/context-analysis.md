@@ -144,7 +144,7 @@ The input result gains a typed `context` sub-result and a `blocked_by` field:
   `monitored`, `blocked`, `degraded`.
 * **`blocked_by`** — `prompt`, `context`, or `none`, so you know which surface
   blocked. A job with [attachments](../api-reference/jobs.md#attachments-preview) (preview)
-  can also have `file`.
+  can also have `file`, once file findings block (a later step).
 * **triggering JSON Pointer** + **rule** — *where* and *which detector* fired.
   The pointer is a **path** (e.g. `/transaction/memo`), never the value at it.
 * **degraded markers** — see below.

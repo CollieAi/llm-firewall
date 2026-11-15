@@ -100,11 +100,12 @@ inert — a safe no-op.
 ## Check attached files (preview)
 
 {% hint style="info" %}
-**Status: preview — needs enabling.** File analysis is off on every deployment for now,
-including app.collieai.io; until it is on, these calls raise `FileAnalysisUnavailable`. In this
-step a job tracks its files but does not read them yet: every file reports
-`admission.status: "rejected"` (`unsupported_media_type`) in the file result. Reading and
-checking the content comes with a later step. From SDK 2.3.0.
+**Status: preview — on at app.collieai.io.** On other deployments these calls raise
+`FileAnalysisUnavailable` until the deployment enables file analysis. An attached PDF (its
+text layer), CSV or XLSX file is read and checked by your policy's rules once the policy turns
+file analysis on — in this step its findings are recorded, not blocked; images and other types
+are not read yet and report `admission.status: "rejected"` (`unsupported_media_type`) in the
+file result. From SDK 2.3.0.
 {% endhint %}
 
 Upload a file once, then check it with the prompt — or alone (`prompt` may be omitted).
