@@ -2,18 +2,21 @@
 description: >-
   How the CollieAi file_policy rule decides what the structural signals of a
   file attached to a job do — hidden text, hidden sheets, active content, a
-  mismatched type: block, monitor or ignore. Preview: needs enabling.
+  mismatched type: block, monitor or ignore. Preview: on at app.collieai.io.
 icon: file-shield
 ---
 
 # File policy
 
 {% hint style="info" %}
-**Status: preview — needs enabling.** File analysis is off on every deployment for now,
-including app.collieai.io: creating a `file_policy` rule answers `422 file_policy_disabled`
-until the deployment enables it. In this step a job tracks its files but does not read them
-yet, so no structural signal is produced and the rule decides nothing; it takes effect with the
-step that reads the content.
+**Status: preview — on at app.collieai.io.** On other deployments creating a `file_policy`
+rule answers `422 file_policy_disabled` until the deployment enables file analysis. The rule
+decides on the signals of attached PDF, CSV and XLSX files, which are read in this step, and on
+the type of any attached file; images and other types are not read yet. It acts once the
+policy turns file analysis on in its
+[`file_analysis`](../../api-reference/files.md#file-analysis-in-a-policy) settings. In this
+step its findings are recorded, not blocked: `block` takes effect with the full coverage
+profile (OCR) in a later step.
 {% endhint %}
 
 ## What is the file policy rule type?
@@ -44,16 +47,18 @@ including text hidden in them.
 | ------------------------ | ------------------------------------------------------------------------ | --------- |
 | `hidden_text`            | Text a reader does not see: white on white, a tiny font, off the page, invisible rendering, Unicode tag characters | `monitor` |
 | `hidden_sheets_or_cells` | Hidden or very hidden sheets, hidden rows or columns in a spreadsheet    | `monitor` |
-| `layer_ocr_mismatch`     | A PDF whose text layer says something its rendered page does not        | `monitor` |
+| `layer_ocr_mismatch`     | A PDF whose text layer says something its rendered page does not. Not checked yet (`not_checked`): it needs OCR, a later step | `monitor` |
 | `type_class_mismatch`    | The file is not what its declared type says (an "image" that is a PDF)   | `block`   |
-| `active_content`         | JavaScript or launch actions in a PDF, macros in a workbook               | `monitor` |
+| `active_content`         | JavaScript or launch actions in a PDF, a VBA project in an XLSX file (a macro-enabled workbook is not read: `unsupported_media_type`) | `monitor` |
 | `embedded_or_external`   | Embedded files, external links, OLE objects                              | `monitor` |
 
 `block` blocks the job when the signal is present — on a policy whose
 [`file_analysis`](../../api-reference/files.md#file-analysis-in-a-policy) `decision` is `block`
-and whose `enforcement_mode` is `enforce`; otherwise it is recorded as `monitor`. `monitor`
-records the signal. `ignore` drops it. A signal you leave out takes its default; the saved
-rule keeps only what you set, so a later change of a default applies to it.
+and whose `enforcement_mode` is `enforce`; otherwise it is recorded as `monitor`. In this step
+it is always recorded as `monitor`: file findings block from the step that brings the full
+coverage profile. `monitor` records the signal. `ignore` drops it. A signal you leave out
+takes its default; the saved rule keeps only what you set, so a later change of a default
+applies to it.
 
 ## Create the rule
 

@@ -165,6 +165,36 @@ supports it:
   model's response exhausted what the request left). Over-budget
   exchanges are refused rather than partially covered.
 
+### Image, audio and file parts
+
+CollieAi checks the text of a request. Image, audio and file content parts — any part of a
+message's `content` other than `text` and `refusal`, in any message — are not checked on this
+route. For `claude-*` models such parts are refused earlier, with `400 unsupported_for_provider`.
+
+What happens to them depends on the project's policy and its
+[`file_analysis`](files.md#file-analysis-in-a-policy) settings:
+
+| Policy | Image, audio and file parts |
+| --- | --- |
+| File analysis off or not configured | Passed to the model unchecked, as before |
+| File analysis on (`enabled: true`), `proxy_binary_parts: "reject"` | The request is refused with `422 binary_parts_rejected` |
+| File analysis on, `proxy_binary_parts: "pass_uninspected"` | Passed to the model unchecked |
+| File analysis on, `proxy_binary_parts` not set | Refused where the file analysis `decision` is `block`, passed where it is `monitor` |
+
+A refused request is not charged and the model is not called. To have a file checked, upload it
+with [`POST /v1/files`](files.md) and attach it to a job
+([Attachments](jobs.md#attachments-preview)).
+
+```json
+{
+  "error": {
+    "message": "This project's policy rejects image, audio and file parts on /v1/chat/completions: they would reach the model unchecked. Send files as job attachments (POST /v1/files, then `attachments` on POST /v1/jobs), or send text only.",
+    "type": "binary_parts_rejected",
+    "code": "binary_parts_rejected"
+  }
+}
+```
+
 ### Error Responses
 
 | Status | Type                   | Code               | Description                              |
@@ -175,8 +205,10 @@ supports it:
 | `422`  | `tool_calls_unsupported_with_outbound_filtering` | same | The request enables tool calls (`tools` with non-`none` `tool_choice`) on a project with Output rules, and tool-call filtering does not cover this combination — see [Tool Calls and Filtering](#tool-calls-and-filtering) |
 | `422`  | `tool_call_arguments_mask_unsupported` | same | A mask-decision Input rule matched inside the tool-call arguments carried by the request history; arguments are never rewritten, so the request is refused |
 | `422`  | `tool_call_items_limit_exceeded` | same | The exchange exceeds the deployment's per-completion tool-call evaluation budget — request items (historical arguments + tool results) and model-generated response arguments share one limit, so the refusal can occur after the model call |
+| `422`  | `binary_parts_rejected` | same | The policy rejects image, audio and file parts on this route — see [Image, audio and file parts](#image-audio-and-file-parts) |
 | `429`  | `rate_limit_exceeded`  | --                 | Per-project rate limit exceeded          |
 | `429`  | `billing_limit`        | --                 | Monthly plan quota exceeded              |
+| `503`  | `service_unavailable`  | `policy_unavailable` | The request carries image, audio or file parts and the project's policy could not be read to decide on them. Retry shortly, or send text only |
 
 Upstream provider errors are passed through with the provider's status code and a `type` derived from it.
 
