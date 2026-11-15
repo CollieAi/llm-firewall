@@ -582,3 +582,50 @@ No response body.
 | `401`  | Not authenticated        |
 | `403`  | Admin role required      |
 | `404`  | Policy or rule not found |
+
+## Retained files
+
+The files projects keep for review after a detector flagged them
+([Retained files](files.md#retained-files-preview)), for CollieAi's analysts. Every download is
+recorded in the project's audit log (`flagged_file_access`).
+
+### GET /api/v1/admin/files
+
+List every project's retained files, the soonest to be deleted first (at most 200).
+
+**URL:** `https://app.collieai.io/api/v1/admin/files`
+
+**Auth:** Session cookie or Bearer token (admin role required)
+
+#### Response -- `200 OK`
+
+```json
+[
+  {
+    "id": "file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234",
+    "project_id": "proj_abc123",
+    "bytes": 182334,
+    "sha256": "3f9a1c2e…",
+    "filename": "invoice.pdf",
+    "retained_until": "2026-11-29T10:00:05+00:00"
+  }
+]
+```
+
+### GET /api/v1/admin/files/{file\_id}/download
+
+Download a retained file of any project — the bytes, as `application/octet-stream` with
+`Content-Disposition: attachment`.
+
+**URL:** `https://app.collieai.io/api/v1/admin/files/{file_id}/download`
+
+**Auth:** Session cookie or Bearer token (admin role required)
+
+#### Error Responses
+
+| Status | Description |
+| ------ | ----------- |
+| `401`  | Not authenticated |
+| `403`  | Admin role required |
+| `404`  | No such retained file (`file_not_found`) |
+| `409`  | The stored bytes are missing or are not the bytes uploaded (`file_unreadable`) |

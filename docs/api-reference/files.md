@@ -61,7 +61,8 @@ curl -X POST https://app.collieai.io/v1/files \
   "state": "uploaded",
   "retain": false,
   "created_at": "2026-11-10T10:00:00Z",
-  "expires_at": "2026-11-10T11:00:00Z"
+  "expires_at": "2026-11-10T11:00:00Z",
+  "retained_until": null
 }
 ```
 
@@ -103,9 +104,12 @@ curl https://app.collieai.io/v1/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234 \
 | `uploaded`        | Stored and ready.                                                    |
 | `leased`          | Attached to a job that has not finished checking it.                 |
 | `delete_requested`| You released it while a job uses it; the bytes are deleted once the job is done. |
+| `retained_flagged`| Kept after a detector flagged it, until `retained_until` — see [Retained files](#retained-files-preview). |
 | `release_pending` | You released it, or its last job is done; the bytes are about to be deleted. |
 | `expired`         | Its time ran out; the bytes are about to be deleted.                 |
 | `deleted`         | The bytes are gone; `filename` is cleared.                           |
+
+`retained_until` is the date a retained file is kept until; `null` for any other state.
 
 `404 file_not_found` — no such file in this project.
 
@@ -124,6 +128,51 @@ curl -X DELETE https://app.collieai.io/v1/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f9
 **Response:** `204 No Content`. `404 file_not_found` — no such file in this project, or its
 bytes are already deleted.
 
+Releasing a retained file ends its retention at once, and the release is recorded in the
+project's audit log (`retention_released_by_client`).
+
+***
+
+## Retained files (preview)
+
+With `retain_flagged` on in the policy's [`file_analysis`](#file-analysis-in-a-policy), a file
+in which a detector found something — any finding of a rule in scope or of the file judge, not
+a `file_policy` signal — is kept after its job, so your team can review what was flagged. The
+same bytes are kept, for `days` after the check, then deleted; nothing else about the file
+changes. The job's [file result](jobs.md#file-result-preview) says what happened to each file
+in `retention_status`.
+
+Retained files count against the project's file quota, and a project keeps at most 100 MiB of
+them: a file beyond that is not kept (`retention_failed:quota`) and is deleted as usual.
+
+A retained file is read only as a download:
+
+### GET /api/v1/projects/{project\_id}/files/{file\_id}/download
+
+**URL:** `https://app.collieai.io/api/v1/projects/{project_id}/files/{file_id}/download`
+
+**Auth:** Session cookie (the project's owner or an editor; a viewer cannot download)
+
+```bash
+curl -o flagged.pdf \
+  https://app.collieai.io/api/v1/projects/proj_abc123/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f901234/download \
+  -H "Authorization: Bearer <token>"
+```
+
+**Response:** `200 OK` — the bytes, as `application/octet-stream` with
+`Content-Disposition: attachment` and the file's name; never shown inline, never cached.
+
+| Status | Code              | Meaning |
+| ------ | ----------------- | ------- |
+| `403`  | `owner_or_editor` | A viewer of the account cannot download files. |
+| `404`  | `file_not_found`  | No such retained file in this project — not retained, its retention ended, or file analysis is off on this deployment. |
+| `409`  | `file_unreadable` | The stored bytes are missing or are not the bytes uploaded. |
+
+Every download is recorded in the project's audit log (`flagged_file_access`): who, which file
+and its `sha256` — never the file's name or content. CollieAi's analysts can download retained
+files to review findings ([Admin](admin.md#retained-files)); their downloads are recorded the
+same way.
+
 ***
 
 ## File analysis in a policy
@@ -141,6 +190,7 @@ recorded as `monitor`.
 | `allowed_classes`     | array  | null      | The file types the policy lets through: `pdf`, `csv`, `xlsx`, `jpeg`, `png` (images are not read yet). null = every type the deployment reads. A file of another type is rejected with the reason `class_not_allowed`. |
 | `rule_scope`          | array  | null      | Advanced: the ids of the rules that check file content. null = the policy's enabled Input rules of the types `llm_detection`, `lightweight_model`, `url_reputation` and `url_filter` whose decision is not `allow`; `regex` and dictionary rules run on files only when listed here. |
 | `primary_llm_rule_id` | string | null      | The `llm_detection` rule that judges the content of files. null = the policy's only enabled Input `llm_detection` rule; with several, choose one here. Its prompt for files is [`file_system_prompt`](../security-rules/blocking-threats/llm-detection.md#attached-files-file_system_prompt). |
+| `retain_flagged`      | object | `{"enabled": false, "days": 14}` | Keep a file in which a detector found something, for `days` (1–30) after its check, readable as a download — see [Retained files](#retained-files-preview). Off by default. |
 | `proxy_binary_parts`  | string | null      | What [`/v1/chat/completions`](chat-completions.md#image-audio-and-file-parts) does with image, audio and file parts, which it does not check: `reject` the request, or `pass_uninspected` — the parts reach the model unchecked. null = `reject` when `decision` is `block`, `pass_uninspected` when it is `monitor`. |
 
 ```bash
