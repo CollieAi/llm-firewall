@@ -586,8 +586,8 @@ No response body.
 ## Retained files
 
 The files projects keep for review after a detector flagged them
-([Retained files](files.md#retained-files-preview)), for CollieAi's analysts. Every download is
-recorded in the project's audit log (`flagged_file_access`).
+([Retained files](files.md#retained-files-preview)), for CollieAi's analysts. Every download
+writes an entry to the project's audit log (`flagged_file_access`).
 
 ### GET /api/v1/admin/files
 

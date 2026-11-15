@@ -128,7 +128,7 @@ curl -X DELETE https://app.collieai.io/v1/files/file_5b0f3a8e9c2d4f6a8b1c3d5e7f9
 **Response:** `204 No Content`. `404 file_not_found` — no such file in this project, or its
 bytes are already deleted.
 
-Releasing a retained file ends its retention at once, and the release is recorded in the
+Releasing a retained file ends its retention at once, and the release writes an entry to the
 project's audit log (`retention_released_by_client`).
 
 ***
@@ -151,7 +151,7 @@ A retained file is read only as a download:
 
 **URL:** `https://app.collieai.io/api/v1/projects/{project_id}/files/{file_id}/download`
 
-**Auth:** Session cookie (the project's owner or an editor; a viewer cannot download)
+**Auth:** Session cookie or Bearer token (the project's owner or an editor; a viewer cannot download)
 
 ```bash
 curl -o flagged.pdf \
@@ -168,10 +168,11 @@ curl -o flagged.pdf \
 | `404`  | `file_not_found`  | No such retained file in this project — not retained, its retention ended, or file analysis is off on this deployment. |
 | `409`  | `file_unreadable` | The stored bytes are missing or are not the bytes uploaded. |
 
-Every download is recorded in the project's audit log (`flagged_file_access`): who, which file
-and its `sha256` — never the file's name or content. CollieAi's analysts can download retained
-files to review findings ([Admin](admin.md#retained-files)); their downloads are recorded the
-same way.
+Every download writes an entry to the project's audit log (`flagged_file_access`): who, which
+file and its `sha256` — never the file's name or content. Like every audit entry it is written
+on a best-effort basis: should the audit log be unavailable, the download is still served.
+CollieAi's analysts can download retained files to review findings
+([Admin](admin.md#retained-files)); their downloads write the same entry.
 
 ***
 
