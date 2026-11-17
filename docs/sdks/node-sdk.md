@@ -101,11 +101,12 @@ inert — a safe no-op.
 
 {% hint style="info" %}
 **Status: preview — on at app.collieai.io.** On other deployments these calls raise
-`FileAnalysisUnavailable` until the deployment enables file analysis. An attached PDF (its
-text layer), CSV or XLSX file is read and checked by your policy's rules once the policy turns
-file analysis on — in this step its findings are recorded, not blocked; images and other types
-are not read yet and report `admission.status: "rejected"` (`unsupported_media_type`) in the
-file result. From SDK 2.3.0.
+`FileAnalysisUnavailable` until the deployment enables file analysis. An attached PDF, CSV,
+XLSX, JPEG or PNG file is read and checked by your policy's rules once the policy turns file
+analysis on — in this step its findings are recorded, not blocked. At app.collieai.io scans,
+photos and images are read with OCR (the full coverage profile); a type the deployment does not
+read reports `admission.status: "rejected"` (`unsupported_media_type`) in the file result. The
+SDK needs no update for this: the file result reaches you as it comes. From SDK 2.3.0.
 {% endhint %}
 
 Upload a file once, then check it with the prompt — or alone (`prompt` may be omitted).

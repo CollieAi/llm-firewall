@@ -11,12 +11,11 @@ icon: file-shield
 {% hint style="info" %}
 **Status: preview — on at app.collieai.io.** On other deployments creating a `file_policy`
 rule answers `422 file_policy_disabled` until the deployment enables file analysis. The rule
-decides on the signals of attached PDF, CSV and XLSX files, which are read in this step, and on
-the type of any attached file; images and other types are not read yet. It acts once the
+decides on the signals of attached PDF, CSV, XLSX, JPEG and PNG files and on the type of any
+attached file; images are read under the full coverage profile, as at app.collieai.io. It acts once the
 policy turns file analysis on in its
 [`file_analysis`](../../api-reference/files.md#file-analysis-in-a-policy) settings. In this
-step its findings are recorded, not blocked: `block` takes effect with the full coverage
-profile (OCR) in a later step.
+step its findings are recorded, not blocked: `block` takes effect in a later step.
 {% endhint %}
 
 ## What is the file policy rule type?
@@ -47,7 +46,7 @@ including text hidden in them.
 | ------------------------ | ------------------------------------------------------------------------ | --------- |
 | `hidden_text`            | Text a reader does not see: white on white, a tiny font, off the page, invisible rendering, Unicode tag characters | `monitor` |
 | `hidden_sheets_or_cells` | Hidden or very hidden sheets, hidden rows or columns in a spreadsheet    | `monitor` |
-| `layer_ocr_mismatch`     | A PDF whose text layer says something its rendered page does not. Not checked yet (`not_checked`): it needs OCR, a later step | `monitor` |
+| `layer_ocr_mismatch`     | A PDF whose text layer says something its rendered page does not. Checked under the full coverage profile, by comparing the layer with OCR of the rendered page; `not_checked` under `text_layer` and on a page OCR did not read | `monitor` |
 | `type_class_mismatch`    | The file is not what its declared type says (an "image" that is a PDF)   | `block`   |
 | `active_content`         | JavaScript or launch actions in a PDF, a VBA project in an XLSX file (a macro-enabled workbook is not read: `unsupported_media_type`) | `monitor` |
 | `embedded_or_external`   | Embedded files, external links, OLE objects                              | `monitor` |

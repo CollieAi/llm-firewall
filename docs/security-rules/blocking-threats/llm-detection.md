@@ -399,11 +399,13 @@ append mode. It must name the three answers `safe`, `injection` and `misuse`, an
 10,000 characters. Blank, or equal to the built-in prompt, is stored as `null` (the built-in
 applies).
 
-The judge reads the text of an attached PDF, CSV or XLSX file part by part — text hidden in the
-file included — together with the job's `message_input` as the user's request. `injection` and
+The judge reads the text of an attached PDF, CSV, XLSX, JPEG or PNG file part by part — text
+hidden in the file and, under the full coverage profile, text read with OCR included — together
+with the job's `message_input` as the user's request. Text that the rendered page shows
+differently from the file's text layer, or only on the page, is judged first. `injection` and
 `misuse` are findings in the job's [`file_result`](../../api-reference/jobs.md#file-result-preview).
 In this step they are recorded, not blocked, whatever the policy's file analysis `decision`:
-`block` takes effect with the full coverage profile (OCR) in a later step. Without
+`block` takes effect in a later step. Without
 a request (a job with attachments and no text) the judge never answers `misuse`. A job pins
 the prompt when it is created, so a change applies to jobs created afterwards.
 
