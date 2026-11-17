@@ -58,19 +58,31 @@ not blocked, itself never pre-gated. Outcomes:
 while it is off there, a create with `attachments` answers `422 file_analysis_unavailable`.
 Your policy turns the check on in its [`file_analysis`](files.md#file-analysis-in-a-policy)
 settings. In this step file findings are recorded, not blocked: `decision: "block"` takes
-effect with the full coverage profile (OCR) in a later step.
+effect in a later step.
 {% endhint %}
 
-What this step reads and checks:
+What this step reads and checks depends on the deployment's coverage profile, reported as
+`coverage_profile` in [`file_result`](#file-result-preview). app.collieai.io reads with `full`.
 
-* **Read:** a PDF's text layer (not its rendered page) and its metadata — document
-  properties, annotations, outline, form values; a CSV file; an XLSX workbook's cells,
-  formulas, comments, hyperlinks, names and text boxes, hidden sheets included. Each file is
-  read in an isolated sandbox.
-* **Not read yet:** images (JPEG, PNG; they need OCR, a later step) and every other type,
-  macro-enabled workbooks included. Such a file reports `admission.status: "rejected"` with
-  the reason `unsupported_media_type` in [`file_result`](#file-result-preview) and counts as
-  incomplete.
+* **Read under both profiles:** a PDF's text layer and its metadata — document properties,
+  annotations, outline, form values; a CSV file; an XLSX workbook's cells, formulas, comments,
+  hyperlinks, names and text boxes, hidden sheets included. Each file is read in an isolated
+  sandbox.
+* **Read under `full` as well:** every page of a PDF is rendered and read with OCR, so a
+  scanned PDF is read, and text the page shows but the layer does not hold is checked. Where
+  the text layer says something the rendered page does not show — text made transparent, kept
+  in a hidden layer, clipped away, covered by an image or drawn with substituted glyphs — that
+  text is marked hidden (`layer_ocr_mismatch`, `transparent`, `hidden_ocg`, `clipped`). JPEG
+  and PNG images are read with OCR, along with the text in their metadata (EXIF, XMP, PNG text
+  chunks), and so are the pictures in an XLSX workbook. Which scripts OCR reads is the policy's
+  `ocr_scripts`.
+* **Not read:** every other type, macro-enabled workbooks included, and images under
+  `text_layer`. Such a file reports `admission.status: "rejected"` with the reason
+  `unsupported_media_type` in [`file_result`](#file-result-preview) and counts as incomplete.
+* **Scanned and long files** take longer to check than a text file. The time a job's files are
+  expected to take — the reading of their pages included — is weighed against your deadline
+  when the job is created; files that would not be checked in time are refused at once
+  (`exceeds_client_budget`).
 * **The text** of a file is checked by the policy's Input rules (the file analysis
   `rule_scope`) and judged by its `llm_detection` rule with that rule's prompt for files,
   [`file_system_prompt`](../security-rules/blocking-threats/llm-detection.md#attached-files-file_system_prompt).
@@ -109,7 +121,7 @@ curl -X POST https://app.collieai.io/v1/jobs \
   `monitor`, and a file that could not be checked fully — not accepted, read or checked
   completely — counts as incomplete and is recorded as `monitor` too (with the reason
   `not_enforced` where `on_incomplete` is `block`). The text of the job still blocks as usual.
-  With the full coverage profile in a later step, `block` takes effect on a policy that
+  In a later step, `block` takes effect on a policy that
   enforces: a file that blocks the job then sets the status `inbound_blocked` and `blocked_by`
   to `file`, and the job does not wait for the rest of its checks.
 * **Files stay in use.** While a job checks a file, the file is `leased`; releasing it then
@@ -329,18 +341,18 @@ step the result is the same under `decision: "block"`:
 | `status` | `complete`, `partial` (some file not checked fully), `failed` (no file could be read) or `rejected` (no file was accepted). |
 | `decision` | The strongest decision of the files and the text: `block`, `monitor` or `allow`. |
 | `finalized_early` | The phase ended before every check finished — a block decided it. |
-| `coverage_profile`, `coverage_profile_version` | What this step checks: `text_layer`, version `1` — the text a file holds, not what its rendered page shows. |
+| `coverage_profile`, `coverage_profile_version` | How the files were read: `text_layer`, version `1` — the text a file holds — or `full`, version `1` — that text and what OCR reads on rendered pages and in pictures. A job keeps the profile it was created under. |
 | `versions` | The policy's `file_policy` rule the job used (`file_policy_rule_id`, `file_policy_defaults_version`) and the file judge's prompt (`file_judge_prompt`: `builtin` or `custom`, and a short hash of the text). |
 | `effective_deadline_at` | Your deadline in the server's clock (from `client_deadline_at`, `attachments_budget_s` or the default). |
 | `verdict_after_client_deadline` | The verdict came after that deadline: you may no longer have applied it. |
 | `applied_by_client` | Always `unknown`: the server does not know whether you applied the verdict. |
 | `files[].admission`, `extraction`, `detection` | Each step's `status` and `reasons`. `not_run` — the step did not run. See the admission reasons below. |
 | `files[].declared_class`, `detected_class`, `magika` | The type the upload declared (`pdf`, `csv`, `xlsx`, `jpeg`, `png`, `csv\|xlsx` or `unknown`), the type found in the bytes, and the file type detector's label and score. |
-| `files[].extraction.coverage` | What was read: `pages_total` and `pages_text` (PDF), `cells_total` (CSV, XLSX), `chars_union` (characters read) and `truncated` (the file had more text than is read; the extraction is then `partial`). `pages_ocr` is for OCR, a later step. |
+| `files[].extraction.coverage` | What was read: `pages_total` and `pages_text` (PDF), `cells_total` (CSV, XLSX), `chars_union` (characters read) and `truncated` (the file had more text than is read; the extraction is then `partial`); under `full`, `pages_ocr` — the pages OCR read. An extraction is also `partial` when OCR did not read everything: `ocr_unavailable`, `ocr_timeout`, `ocr_buffer_cap` or `ocr_not_rendered` (OCR could not read a page), `unknown_script` (text in a script OCR does not read), `alignment_budget` (a page too dense to compare in full). |
 | `files[].detection` | Also: `windows_total` and `windows_evaluated` — the parts of the text checked, and how many every check finished on; `llm_calls` — the parts the file judge was asked about; `judge_attempts` — its calls, retries included. `facts` may hold `no_request` (the job has no `message_input`, so misuse was not judged) or `request_too_long`. |
-| `files[].required_checks`, `missing_checks` | The checks a full analysis needs, and those this step does not run yet: for a PDF, the tricks only the rendered page shows (`clipped`, `glyph_substitution`, `hidden_ocg`, `occluded`, `transparent`, `tr3_over_image`) — text they hide is checked as visible text; for a workbook with images, `ocr`. Because of them, file findings are recorded and not blocked in this step. |
+| `files[].required_checks`, `missing_checks` | The checks a full analysis needs, and those that did not run. For a PDF, the tricks only the rendered page shows (`clipped`, `glyph_substitution`, `hidden_ocg`, `occluded`, `transparent`, `tr3_over_image`): under `text_layer` they are always missing, and text they hide is checked as visible text; under `full` they run on every page OCR read and stay missing for a page it did not. For an image under `full`, `ocr`; for a workbook with pictures, `ocr` when they were not read. |
 | `files[].signals` | The file's structural signals: `name`, `state` (`present`, `absent` or `not_checked`), `count`, and where they were found (`locations`). A [`file_policy`](../security-rules/blocking-threats/file-policy.md) rule decides what a present signal does. |
-| `files[].findings` | What the checks found. `detector` is `llm_detection`, `hidden_injection` (an injection in text a reader does not see), `misuse`, another rule type, or the signal a `file_policy` finding is about. `rule_action` is what the rule asks for; `effective_action` what it did — `monitor` in this step — and `no_enforce_reason` why it did not block (`surface_monitor_only`: file findings are recorded, not blocked; `decision_monitor`: the rule itself asks for `monitor`). `where` locates the text: `page` (from 0) and `bbox`, or `sheet_fp`, `cell`, `row`, `col`, with its `channel` and whether it is `hidden`. A finding in a PDF's metadata is only ever recorded (`channel_monitor_only`). `evidence` holds keyed fingerprints of the text (`window_fp`, `match_fp`) — never the text. |
+| `files[].findings` | What the checks found. `detector` is `llm_detection`, `hidden_injection` (an injection in text a reader does not see), `misuse`, another rule type, or the signal a `file_policy` finding is about. `rule_action` is what the rule asks for; `effective_action` what it did — `monitor` in this step — and `no_enforce_reason` why it did not block (`surface_monitor_only`: file findings are recorded, not blocked; `decision_monitor`: the rule itself asks for `monitor`). `where` locates the text: `page` (from 0) and `bbox`, or `sheet_fp`, `cell`, `row`, `col`, with its `channel` and whether it is `hidden`. Under `full` the channel can also be `page_ocr` (text OCR found on a rendered page that the layer does not hold), `page_ocr_variant` (the rendered page reads a little differently from the layer — both readings are checked) or `ocr` (text in an image). A finding in a PDF's metadata is only ever recorded (`channel_monitor_only`). `evidence` holds keyed fingerprints of the text (`window_fp`, `match_fp`) — never the text. |
 | `files[].versions` | The versions of the extractor and its libraries. |
 | `files[].retention_status` | Whether the file is kept for review ([Retained files](files.md#retained-files-preview)): `none`; `retained`; `pending` — another job still holds the file, and the last to finish decides; `retention_failed:quota` — the project's retained files are at their limit. |
 | `files[].decision`, `decision_reasons` | What the file decides — `monitor` or `allow` in this step — and why: each finding as `<rule_type>:<detector or signal>`; `incomplete` and the steps that were not complete; `not_enforced` when a `block` was not applied. |
@@ -349,7 +361,8 @@ Admission reasons (`files[].admission.reasons`) when a file is not accepted:
 
 | Status | Reason | When |
 | --- | --- | --- |
-| `rejected` | `unsupported_media_type` | A type this step does not read: an image, or any type other than PDF, CSV and XLSX. |
+| `rejected` | `unsupported_media_type` | A type the deployment does not read: any type other than PDF, CSV, XLSX, JPEG and PNG, or an image under the `text_layer` profile. |
+| `rejected` | `too_many_pixels` | An image of more than 50 megapixels. |
 | `rejected` | `class_not_allowed` | A type outside the policy's `allowed_classes`. |
 | `rejected` | `encrypted` | A password-protected PDF. |
 | `rejected` | `too_many_pages` | A PDF of more than 50 pages. |

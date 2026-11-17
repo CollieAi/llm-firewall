@@ -13,10 +13,12 @@ icon: file-arrow-up
 **Status: preview — on at app.collieai.io.** File analysis is being rolled out step by step.
 It is on at app.collieai.io; other deployments need to enable it, and while it is off there,
 every route on this page answers `422 file_analysis_unavailable`. Uploaded files can be
-attached to jobs ([Attachments](jobs.md#attachments-preview)): a PDF (its text layer), CSV or
-XLSX file is read in an isolated sandbox and checked by your policy's rules once the policy
-turns file analysis on ([File analysis in a policy](#file-analysis-in-a-policy)). In this step
-what the check finds is recorded, not blocked. Images and other types are not read yet.
+attached to jobs ([Attachments](jobs.md#attachments-preview)): a PDF, CSV, XLSX, JPEG or PNG
+file is read in an isolated sandbox and checked by your policy's rules once the policy turns
+file analysis on ([File analysis in a policy](#file-analysis-in-a-policy)). At app.collieai.io
+files are read with the full coverage profile: the rendered pages of a PDF and the pictures in
+a file are read with OCR too, so scans, photos and text hidden in a PDF's layout are checked.
+In this step what the check finds is recorded, not blocked.
 {% endhint %}
 
 Upload a file once, get a `file_id`, and refer to it later. CollieAi stores the bytes only to
@@ -186,9 +188,10 @@ recorded as `monitor`.
 | Field                 | Type   | Default   | Description |
 | --------------------- | ------ | --------- | ----------- |
 | `enabled`             | bool   | `false`   | Analyze attached files (the deployment must have file analysis enabled too). |
-| `decision`            | string | `monitor` | `block` or `monitor`; both are accepted and saved. Under `monitor` every file finding and every incomplete check is recorded, and none blocks. In this step a file never blocks, under `block` too: every finding is recorded as `monitor`, because the text layer is not everything a reader sees (`missing_checks` in the [file result](jobs.md#file-result-preview)). `block` takes effect with the full coverage profile (OCR) in a later step; then a file blocks a job under `block` on a policy whose `enforcement_mode` is `enforce`. `decision` also sets the default of `proxy_binary_parts`, which applies now. |
+| `decision`            | string | `monitor` | `block` or `monitor`; both are accepted and saved. Under `monitor` every file finding and every incomplete check is recorded, and none blocks. In this step a file never blocks, under `block` too: every finding is recorded as `monitor`. `block` takes effect in a later step; then a file blocks a job under `block` on a policy whose `enforcement_mode` is `enforce`. `decision` also sets the default of `proxy_binary_parts`, which applies now. |
 | `on_incomplete`       | string | `block`   | What a file that could not be checked fully decides: `block` or `monitor`. A file that was not accepted, read or checked completely counts as incomplete. In this step a `block` here is recorded as `monitor`, with the reason `not_enforced`. |
-| `allowed_classes`     | array  | null      | The file types the policy lets through: `pdf`, `csv`, `xlsx`, `jpeg`, `png` (images are not read yet). null = every type the deployment reads. A file of another type is rejected with the reason `class_not_allowed`. |
+| `allowed_classes`     | array  | null      | The file types the policy lets through: `pdf`, `csv`, `xlsx`, `jpeg`, `png` (images are read under the full coverage profile only). null = every type the deployment reads. A file of another type is rejected with the reason `class_not_allowed`. |
+| `ocr_scripts`         | array  | `["latin"]` | The scripts OCR reads: `latin`, and `cyrillic` for documents in Cyrillic. Latin is always read; add `cyrillic` when your files hold Cyrillic text. A job keeps the scripts its policy had when the job was created. |
 | `rule_scope`          | array  | null      | Advanced: the ids of the rules that check file content. null = the policy's enabled Input rules of the types `llm_detection`, `lightweight_model`, `url_reputation` and `url_filter` whose decision is not `allow`; `regex` and dictionary rules run on files only when listed here. |
 | `primary_llm_rule_id` | string | null      | The `llm_detection` rule that judges the content of files. null = the policy's only enabled Input `llm_detection` rule; with several, choose one here. Its prompt for files is [`file_system_prompt`](../security-rules/blocking-threats/llm-detection.md#attached-files-file_system_prompt). |
 | `retain_flagged`      | object | `{"enabled": false, "days": 14}` | Keep a file in which a detector found something, for `days` (1–30) after its check, readable as a download — see [Retained files](#retained-files-preview). Off by default. |
