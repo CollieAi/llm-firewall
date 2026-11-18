@@ -48,6 +48,10 @@ so a notification on your phone or lock screen is enough to read it.
 * Changing or resetting the password ends a sign-in that is still waiting for
   its code.
 
+Setting, changing or removing your password, or resetting it by email, signs
+out your other sessions — in other browsers and on other devices. The session
+you made the change from stays signed in.
+
 Signing in with Google asks for no code: your Google account's own two-step
 verification protects that sign-in.
 
@@ -84,6 +88,8 @@ Session cookies are:
 2. The server creates a session and returns a cookie. A session lasts 7 days.
 3. Your browser sends the cookie automatically with every request.
 4. When you sign out, the session is invalidated.
+5. When your password is set, changed, removed or reset, every other session of
+   yours ends; the one you made the change from stays signed in.
 
 ## API Key Authentication
 
